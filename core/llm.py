@@ -23,18 +23,21 @@ import time
 from typing import Literal
 
 from openai import OpenAI
+from dotenv import load_dotenv
 
 from core.schemas import TierCall
 
+# Carga el archivo local de desarrollo sin sobrescribir una variable de entorno
+# ya configurada por el entorno de despliegue. El archivo .env está ignorado por Git.
+load_dotenv()
+
 BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 
-# TODO(persona-4): confirmar estos IDs exactos en el catalogo de Token
-# Factory cuando tengamos acceso. Siguen el patron visto en
-# nvidia/nemotron-3-super-120b-a12b (confirmado en el playground publico
-# de Token Factory).
+# Confirmados el 2026-09-13 en el catálogo de la cuenta de Token Factory.
+# Conservamos los IDs con las mayúsculas exactas que expone el servicio.
 MODEL_IDS = {
-    "nano": "nvidia/nemotron-3-nano-30b-a3b",
-    "ultra": "nvidia/nemotron-3-ultra-550b-a55b",
+    "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "ultra": "nvidia/Nemotron-3-Ultra-550b-a55b",
 }
 
 Tier = Literal["nano", "ultra"]
@@ -94,9 +97,14 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
 
 
 if __name__ == "__main__":
-    # Prueba manual: python -m core.llm
-    # Requiere NEBIUS_API_KEY real en el entorno (.env).
-    for tier in ("nano", "ultra"):
-        text, tc = call(tier, [{"role": "user", "content": "Responde solo con: hola"}])
-        print(f"[{tier}] {text!r}")
-        print(f"  TierCall: {tc}")
+    # Smoke test manual: python -m core.llm
+    # Una sola llamada barata a Nano, con salida acotada. No usar Ultra para
+    # comprobar credenciales o conectividad.
+    text, tc = call(
+        "nano",
+        [{"role": "user", "content": "Responde exactamente: OK"}],
+        max_tokens=4,
+        temperature=0,
+    )
+    print(f"[nano smoke test] {text!r}")
+    print(f"  TierCall: {tc}")
