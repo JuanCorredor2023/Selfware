@@ -23,3 +23,26 @@ class TierCall:
     tokens_out: int
     latency_ms: float
     cost_usd: float
+
+
+@dataclass
+class Chunk:
+    """Contrato C2: context -> agent, eval, api. Un fragmento recuperado,
+    con su procedencia (para poder mostrarla en el dashboard, A2)."""
+
+    text: str
+    item_id: str
+    para_path: str
+    ts: str
+    score: float
+
+
+@dataclass
+class Answer:
+    """Contrato C3: agent -> api, eval. Respuesta completa del agente."""
+
+    text: str
+    confidence: float
+    provenance: list[Chunk]
+    used_web: bool
+    tier_calls: list[TierCall]
