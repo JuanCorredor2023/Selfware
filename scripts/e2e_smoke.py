@@ -39,24 +39,25 @@ from observability.otel import record_tier_call, setup_tracing
 #
 # NOTE: the Nemotron-3 models are "reasoning" models -- they spend
 # tokens on an internal chain-of-thought before writing the final
-# answer. With max_tokens=8 (tried 2026-09-19) Nano returned
-# content=None and Ultra returned a mid-thought fragment, because the
-# whole budget went to reasoning and none was left for the answer.
-#
-# At max_tokens=40 (also tried 2026-09-19): Ultra finished cleanly in
-# 29 tokens and returned real text ("pong"). Nano used all 40 and STILL
-# returned content=None -- for this prompt it needs more reasoning
-# tokens than Ultra does, which is counter-intuitive for the "cheap and
-# fast" tier and also shows up as higher latency (Nano 1115ms vs Ultra
-# 790ms here). Open question, not chased further to avoid burning real
-# calls on trial and error: does this model/API expose a way to turn
-# reasoning off (some NVIDIA Nemotron models support a "detailed
-# thinking on/off" system-prompt convention) -- check the model card on
-# Nebius/NVIDIA before assuming a parameter name. Matters for planning
-# Nano's real token/latency budget once the agent uses it for real
-# classification calls, not just for this smoke test.
+# answer. Three live runs on 2026-09-19 pinned down how much budget
+# each tier actually needs for this trivial prompt:
+#   max_tokens=8:   Nano content=None, Ultra mid-thought fragment (both cut off)
+#   max_tokens=40:  Ultra finishes clean in 29 tokens ("pong"); Nano still
+#                    cut off at 40/40, content=None
+#   max_tokens=200: Nano finally finishes in 65 tokens ("\npong")
+# So Ultra settles in ~29 tokens, Nano needs ~65 -- more than double,
+# which is the opposite of what you'd expect from the "cheap and fast"
+# tier, and lines up with Nano also being slower here (1115-1437ms vs
+# Ultra's 790ms). 100 gives both tiers comfortable headroom by default.
+# Confirmed, not just suspected: worth factoring into the agent's real
+# token/latency budget once it relies on Nano for fast classification
+# calls -- it may not be as fast as the plan assumes. Whether the API
+# exposes a way to turn reasoning off (some NVIDIA Nemotron models
+# support a "detailed thinking on/off" system-prompt convention) is
+# still unverified -- check the model card on Nebius/NVIDIA before
+# assuming a parameter name.
 PING_MESSAGES = [{"role": "user", "content": "Reply with exactly: pong"}]
-MAX_TOKENS = 40
+MAX_TOKENS = 100
 
 
 def run_tier(tier: Tier) -> None:
