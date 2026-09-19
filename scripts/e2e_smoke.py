@@ -41,9 +41,20 @@ from observability.otel import record_tier_call, setup_tracing
 # tokens on an internal chain-of-thought before writing the final
 # answer. With max_tokens=8 (tried 2026-09-19) Nano returned
 # content=None and Ultra returned a mid-thought fragment, because the
-# whole budget went to reasoning and none was left for the answer. 40
-# gives enough room for a one-word answer to actually come through --
-# raise it further if a future model reasons even more before replying.
+# whole budget went to reasoning and none was left for the answer.
+#
+# At max_tokens=40 (also tried 2026-09-19): Ultra finished cleanly in
+# 29 tokens and returned real text ("pong"). Nano used all 40 and STILL
+# returned content=None -- for this prompt it needs more reasoning
+# tokens than Ultra does, which is counter-intuitive for the "cheap and
+# fast" tier and also shows up as higher latency (Nano 1115ms vs Ultra
+# 790ms here). Open question, not chased further to avoid burning real
+# calls on trial and error: does this model/API expose a way to turn
+# reasoning off (some NVIDIA Nemotron models support a "detailed
+# thinking on/off" system-prompt convention) -- check the model card on
+# Nebius/NVIDIA before assuming a parameter name. Matters for planning
+# Nano's real token/latency budget once the agent uses it for real
+# classification calls, not just for this smoke test.
 PING_MESSAGES = [{"role": "user", "content": "Reply with exactly: pong"}]
 MAX_TOKENS = 40
 
