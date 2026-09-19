@@ -3,17 +3,26 @@ observability/cost.py -- Person 4.
 
 Converts tokens -> USD cost per tier (Nano vs Ultra).
 
-Status: DRAFT. Prices below are placeholders -- replace them with the
-real ones from https://tokenfactory.nebius.com/organization/prices once
-the account is active.
+Status: real prices, region eu-north1, from
+https://tokenfactory.nebius.com/organization/prices (checked 2026-09-19).
+Nano's prices are valid from 01 Jan 2026, Ultra's from 01 Jun 2026 -- if
+Nebius publishes a new price list, update this table and re-check both
+"valid from" dates.
+
+Batch pricing (cheaper, asynchronous) also exists for both models but
+isn't used here -- core/llm.py only makes synchronous calls today. Add a
+"batch" variant to this table if/when that changes.
 """
 
 from core.schemas import TierCall
 
-# TODO(person-4): replace with real prices (USD per 1M tokens)
+# USD per 1,000,000 tokens. Keys MUST match core.llm.MODEL_IDS values
+# exactly (case-sensitive) -- that's the only thing that connects a real
+# TierCall.model string to a price here. A key that doesn't match falls
+# through to $0.0 in estimate_cost_usd() below, silently.
 PRICE_PER_MILLION_TOKENS_USD = {
-    "nvidia/nemotron-3-nano-30b-a3b": {"input": 0.0, "output": 0.0},
-    "nvidia/nemotron-3-ultra-550b-a55b": {"input": 0.0, "output": 0.0},
+    "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": {"input": 0.06, "output": 0.24},
+    "nvidia/Nemotron-3-Ultra-550b-a55b": {"input": 1.00, "output": 3.00},
 }
 
 

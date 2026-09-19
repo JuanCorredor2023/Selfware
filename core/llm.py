@@ -5,10 +5,8 @@ Team rule: no other module should call Token Factory directly. A grep for
 "tokenfactory.nebius.com" across the repo must find exactly this file.
 
 Status: DRAFT -- Person 4, week 1 (restart).
-Still missing:
-  - Real per-model pricing from
-    https://tokenfactory.nebius.com/organization/prices
-    (observability/cost.py has a placeholder table)
+Real per-model pricing lives in observability/cost.py, keyed by the
+exact MODEL_IDS strings below (case-sensitive).
 """
 
 from __future__ import annotations
