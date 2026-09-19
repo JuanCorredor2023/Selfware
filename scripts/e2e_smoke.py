@@ -33,11 +33,19 @@ from core.llm import Tier, call
 from observability.cost import with_cost
 from observability.otel import record_tier_call, setup_tracing
 
-# Deliberately tiny: this is a connectivity + wiring check, not a real
+# Deliberately small: this is a connectivity + wiring check, not a real
 # question. max_tokens caps the (paid) output; temperature=0 makes the
 # model's reply reproducible run to run.
+#
+# NOTE: the Nemotron-3 models are "reasoning" models -- they spend
+# tokens on an internal chain-of-thought before writing the final
+# answer. With max_tokens=8 (tried 2026-09-19) Nano returned
+# content=None and Ultra returned a mid-thought fragment, because the
+# whole budget went to reasoning and none was left for the answer. 40
+# gives enough room for a one-word answer to actually come through --
+# raise it further if a future model reasons even more before replying.
 PING_MESSAGES = [{"role": "user", "content": "Reply with exactly: pong"}]
-MAX_TOKENS = 8
+MAX_TOKENS = 40
 
 
 def run_tier(tier: Tier) -> None:
