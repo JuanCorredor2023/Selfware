@@ -1,26 +1,26 @@
-// Datos falsos -- el indice PARA real (Persona 2) llega hasta la Semana 3.
-// Esta lista simula lo que /projects deberia devolver algun dia, derivado
-// de la carpeta "Projects" de PARA (la P de PARA: Projects, Areas,
-// Resources, Archive).
+// Mock data -- the real PARA index (Person 2) lands in Week 3. This list
+// simulates what /projects should eventually return, derived from the
+// "Projects" folder of PARA (the P in PARA: Projects, Areas, Resources,
+// Archive).
 export const mockProjects = [
   {
     id: "atlas-hackathon",
-    name: "Atlas / Selfware — Hackathon Nebius x NVIDIA",
-    status: "activo",
+    name: "Atlas / Selfware — Nebius x NVIDIA Hackathon",
+    status: "active",
     lastActivity: "2026-09-17",
     emailCount: 42,
   },
   {
-    id: "tesis",
-    name: "Tesis de maestría",
-    status: "activo",
+    id: "thesis",
+    name: "Master's thesis",
+    status: "active",
     lastActivity: "2026-09-10",
     emailCount: 18,
   },
   {
-    id: "viaje-fin-de-ano",
-    name: "Viaje fin de año",
-    status: "inactivo",
+    id: "year-end-trip",
+    name: "Year-end trip",
+    status: "inactive",
     lastActivity: "2026-07-02",
     emailCount: 5,
   },

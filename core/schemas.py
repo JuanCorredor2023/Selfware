@@ -1,13 +1,13 @@
 """
-core/schemas.py — BORRADOR.
+core/schemas.py -- DRAFT.
 
-El dueño real de este archivo es Persona 1 (segun el plan). Esto es un
-placeholder para poder trabajar en paralelo antes de la firma de contratos
-(dia 5): "Contratos entre carriles el dia 5 con datos falsos si hace falta."
+The real owner of this file is Person 1 (per the plan). This is a
+placeholder so we can work in parallel before contracts are signed
+(day 5): "Contracts between lanes on day 5, with fake data if needed."
 
-Solo incluye lo que Persona 4 necesita ya: el contrato C4 (TierCall).
-Cuando Persona 1 suba el schema oficial, este archivo se reemplaza por el
-suyo y se borra esta nota.
+It only includes what Person 4 needs right now: contract C4 (TierCall).
+Once Person 1 ships the official schema, this file gets replaced by
+theirs and this note goes away.
 """
 
 from dataclasses import dataclass
@@ -15,8 +15,8 @@ from dataclasses import dataclass
 
 @dataclass
 class TierCall:
-    """Contrato C4: core/llm.py -> observability/. Una entrada por cada
-    llamada a Token Factory (Nano o Ultra)."""
+    """Contract C4: core/llm.py -> observability/. One entry per call to
+    Token Factory (Nano or Ultra)."""
 
     model: str
     tokens_in: int
@@ -27,8 +27,8 @@ class TierCall:
 
 @dataclass
 class Chunk:
-    """Contrato C2: context -> agent, eval, api. Un fragmento recuperado,
-    con su procedencia (para poder mostrarla en el dashboard, A2)."""
+    """Contract C2: context -> agent, eval, api. A retrieved snippet,
+    with its provenance (so the dashboard can show it, A2)."""
 
     text: str
     item_id: str
@@ -39,7 +39,7 @@ class Chunk:
 
 @dataclass
 class Answer:
-    """Contrato C3: agent -> api, eval. Respuesta completa del agente."""
+    """Contract C3: agent -> api, eval. The agent's full response."""
 
     text: str
     confidence: float

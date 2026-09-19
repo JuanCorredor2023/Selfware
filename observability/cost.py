@@ -1,17 +1,16 @@
 """
-observability/cost.py -- Persona 4.
+observability/cost.py -- Person 4.
 
-Convierte tokens -> costo en USD por escalon (Nano vs Ultra).
+Converts tokens -> USD cost per tier (Nano vs Ultra).
 
-Estado: BORRADOR. Los precios de abajo son placeholders -- hay que
-reemplazarlos con los reales de
-https://tokenfactory.nebius.com/organization/prices
-en cuanto haya cuenta activa.
+Status: DRAFT. Prices below are placeholders -- replace them with the
+real ones from https://tokenfactory.nebius.com/organization/prices once
+the account is active.
 """
 
 from core.schemas import TierCall
 
-# TODO(persona-4): reemplazar con precios reales (USD por 1M de tokens)
+# TODO(person-4): replace with real prices (USD per 1M tokens)
 PRICE_PER_MILLION_TOKENS_USD = {
     "nvidia/nemotron-3-nano-30b-a3b": {"input": 0.0, "output": 0.0},
     "nvidia/nemotron-3-ultra-550b-a55b": {"input": 0.0, "output": 0.0},
@@ -26,7 +25,7 @@ def estimate_cost_usd(model: str, tokens_in: int, tokens_out: int) -> float:
 
 
 def with_cost(tier_call: TierCall) -> TierCall:
-    """Devuelve el mismo TierCall con cost_usd ya calculado."""
+    """Returns the same TierCall with cost_usd filled in."""
     tier_call.cost_usd = estimate_cost_usd(
         tier_call.model, tier_call.tokens_in, tier_call.tokens_out
     )

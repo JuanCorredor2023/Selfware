@@ -4,7 +4,7 @@ from observability.otel import record_tier_call, setup_tracing
 
 def test_setup_tracing_is_idempotent():
     setup_tracing("test-service")
-    setup_tracing("test-service")  # no debe truenar ni duplicar nada
+    setup_tracing("test-service")  # must not raise or duplicate anything
 
 
 def test_record_tier_call_does_not_raise():

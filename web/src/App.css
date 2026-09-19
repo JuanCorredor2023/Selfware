@@ -102,12 +102,12 @@ body {
   font-size: 0.75rem;
 }
 
-.badge--activo {
+.badge--active {
   background: rgba(34, 197, 94, 0.15);
   color: var(--active);
 }
 
-.badge--inactivo {
+.badge--inactive {
   background: rgba(100, 116, 139, 0.2);
   color: var(--inactive);
 }

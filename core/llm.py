@@ -1,19 +1,14 @@
 """
-core/llm.py -- UNICO cliente del proyecto hacia Nebius Token Factory.
+core/llm.py -- SINGLE client for this project to Nebius Token Factory.
 
-Regla del equipo: ningun otro modulo debe llamar directamente a Token
-Factory. Un grep por "tokenfactory.nebius.com" en el repo debe encontrar
-exactamente este archivo.
+Team rule: no other module should call Token Factory directly. A grep for
+"tokenfactory.nebius.com" across the repo must find exactly this file.
 
-Estado: BORRADOR -- Persona 4, semana 1 (reinicio).
-Falta:
-  - API key real (esperando aprobacion de Nebius Builder Program / creditos
-    del hackathon)
-  - Confirmar los identificadores exactos de modelo en
-    https://tokenfactory.nebius.com/models/catalog una vez haya acceso
-  - Precios reales por modelo en
+Status: DRAFT -- Person 4, week 1 (restart).
+Still missing:
+  - Real per-model pricing from
     https://tokenfactory.nebius.com/organization/prices
-    (observability/cost.py tiene un placeholder)
+    (observability/cost.py has a placeholder table)
 """
 
 from __future__ import annotations
@@ -27,14 +22,14 @@ from dotenv import load_dotenv
 
 from core.schemas import TierCall
 
-# Carga el archivo local de desarrollo sin sobrescribir una variable de entorno
-# ya configurada por el entorno de despliegue. El archivo .env está ignorado por Git.
+# Loads the local dev .env file without overriding a variable already set
+# by the deployment environment. .env is gitignored.
 load_dotenv()
 
 BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 
-# Confirmados el 2026-09-13 en el catálogo de la cuenta de Token Factory.
-# Conservamos los IDs con las mayúsculas exactas que expone el servicio.
+# Confirmed on 2026-09-13 in the Token Factory account's model catalog.
+# We keep the exact casing the service exposes.
 MODEL_IDS = {
     "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
     "ultra": "nvidia/Nemotron-3-Ultra-550b-a55b",
@@ -46,14 +41,14 @@ _client: OpenAI | None = None
 
 
 def _get_client() -> OpenAI:
-    """Crea (una sola vez) el cliente OpenAI-compatible hacia Token Factory."""
+    """Builds (once) the OpenAI-compatible client pointed at Token Factory."""
     global _client
     if _client is None:
         api_key = os.environ.get("NEBIUS_API_KEY")
         if not api_key:
             raise RuntimeError(
-                "Falta NEBIUS_API_KEY. Copia .env.example a .env y pon tu "
-                "key de https://tokenfactory.nebius.com/project/api-keys"
+                "Missing NEBIUS_API_KEY. Copy .env.example to .env and set "
+                "your key from https://tokenfactory.nebius.com/project/api-keys"
             )
         _client = OpenAI(base_url=BASE_URL, api_key=api_key)
     return _client
@@ -61,16 +56,16 @@ def _get_client() -> OpenAI:
 
 def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
     """
-    Unico punto de entrada del proyecto a Token Factory.
+    The project's single entry point to Token Factory.
 
     Args:
-        tier: "nano" (clasificacion PARA, barato) o "ultra" (agente de
-            respuesta, razonamiento).
-        messages: mensajes estilo OpenAI chat
+        tier: "nano" (PARA classification, cheap) or "ultra" (answering
+            agent, real reasoning).
+        messages: OpenAI-style chat messages
             ([{"role": ..., "content": ...}]).
 
     Returns:
-        (texto_de_respuesta, TierCall) -- TierCall es el contrato C4 hacia
+        (response_text, TierCall) -- TierCall is contract C4 towards
         observability/.
     """
     client = _get_client()
@@ -90,19 +85,19 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
         tokens_in=usage.prompt_tokens if usage else 0,
         tokens_out=usage.completion_tokens if usage else 0,
         latency_ms=latency_ms,
-        cost_usd=0.0,  # TODO(persona-4): calcular con observability/cost.py
+        cost_usd=0.0,  # TODO(person-4): compute via observability/cost.py
     )
 
     return text, tier_call
 
 
 if __name__ == "__main__":
-    # Smoke test manual: python -m core.llm
-    # Una sola llamada barata a Nano, con salida acotada. No usar Ultra para
-    # comprobar credenciales o conectividad.
+    # Manual smoke test: python -m core.llm
+    # A single cheap call to Nano, with capped output. Never use Ultra to
+    # check credentials or connectivity.
     text, tc = call(
         "nano",
-        [{"role": "user", "content": "Responde exactamente: OK"}],
+        [{"role": "user", "content": "Reply with exactly: OK"}],
         max_tokens=4,
         temperature=0,
     )

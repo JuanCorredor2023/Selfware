@@ -8,7 +8,7 @@ function App() {
     <div className="app">
       <header className="app__header">
         <h1>Selfware</h1>
-        <p>Dashboard — Persona 4 (producto y observabilidad)</p>
+        <p>Dashboard — Product &amp; Observability (Person 4)</p>
       </header>
       <main className="app__main">
         <ProjectList projects={mockProjects} />

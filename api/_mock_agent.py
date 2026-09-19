@@ -1,15 +1,15 @@
 """
-api/_mock_agent.py -- MOCK temporal de Persona 4.
+api/_mock_agent.py -- Person 4's TEMPORARY mock.
 
-El agente real (agent/answer.py) es responsabilidad de Persona 3 y todavia
-no existe. Mientras tanto, esta funcion devuelve un Answer con la forma
-EXACTA del contrato C3, para que /ask se pueda construir y probar ya, sin
-llamar a Token Factory.
+The real agent (agent/answer.py) is Person 3's responsibility and doesn't
+exist yet. In the meantime, this function returns an Answer with the
+EXACT shape of contract C3, so /ask can be built and tested now, without
+calling Token Factory.
 
-Cuando agent/answer.py exista: el cambio en api/app.py es una linea --
-reemplazar el import de aqui por `from agent.answer import answer_question`.
-No borrar este archivo sin avisar al equipo; es el mock que documenta la
-forma del contrato mientras no esta firmado (dia 5).
+Once agent/answer.py exists: the change in api/app.py is one line --
+swap this import for `from agent.answer import answer_question`.
+Don't delete this file without telling the team; it's the mock that
+documents the contract's shape while it isn't signed yet (day 5).
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ from core.schemas import Answer, Chunk, TierCall
 
 
 def answer_question(query: str, strategy: str) -> Answer:
-    """Misma firma que debera tener agent.answer.answer_question() cuando
-    exista de verdad (contrato C3). No hace ninguna llamada externa."""
+    """Same signature agent.answer.answer_question() will have to have
+    once it's real (contract C3). Makes no external calls."""
 
     fake_chunks = [
         Chunk(
-            text=f"[MOCK] fragmento relacionado con: {query!r}",
+            text=f"[MOCK] snippet related to: {query!r}",
             item_id="mock-item-1",
-            para_path="projects/mock-proyecto",
+            para_path="projects/mock-project",
             ts="2026-09-01T00:00:00Z",
             score=0.87,
         ),
@@ -40,7 +40,7 @@ def answer_question(query: str, strategy: str) -> Answer:
     )
 
     return Answer(
-        text=f"[MOCK] Respuesta simulada para: {query!r} (estrategia={strategy})",
+        text=f"[MOCK] Simulated answer for: {query!r} (strategy={strategy})",
         confidence=0.5,
         provenance=fake_chunks,
         used_web=False,

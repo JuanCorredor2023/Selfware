@@ -1,23 +1,22 @@
 """
-observability/otel.py -- Persona 4.
+observability/otel.py -- Person 4.
 
-Setup de OpenTelemetry + registro de llamadas a Token Factory como spans.
+OpenTelemetry setup + recording Token Factory calls as spans.
 
-Decision de diseno, para que quede explicita y se pueda defender en la
-firma de contratos: core/llm.py NO importa este archivo. La regla del
-monolito dice "ningun modulo importa de otro excepto de core/", y
-observability/ es la excepcion cross-cutting ("todos instrumentan", segun
-el diagrama de arquitectura) -- pero la excepcion es que TODOS pueden
-importar observability/, no que core/ pueda importar hacia afuera. Por
-eso: core/llm.py produce un TierCall y lo devuelve; quien lo llama
-(api/app.py hoy, agent/ o ingest/ despues) es quien decide instrumentarlo
-llamando a record_tier_call(). Asi core/llm.py se mantiene sin
-dependencias, y el grep de la URL de Token Factory sigue encontrando un
-solo archivo.
+Design decision, spelled out so it can be defended at contract sign-off:
+core/llm.py does NOT import this file. The monolith rule says "no module
+imports another except core/", and observability/ is the cross-cutting
+exception ("everyone instruments", per the architecture diagram) -- but
+the exception is that EVERYONE can import observability/, not that core/
+can import outward. So: core/llm.py produces a TierCall and returns it;
+whoever calls it (api/app.py today, agent/ or ingest/ later) decides
+whether to instrument it by calling record_tier_call(). That keeps
+core/llm.py dependency-free, and grepping for the Token Factory URL still
+finds exactly one file.
 
-Exporter: por ahora a consola (ConsoleSpanExporter). No hay backend de
-trazas desplegado todavia -- cuando lo haya, el cambio es local a este
-archivo, nadie mas se entera.
+Exporter: console for now (ConsoleSpanExporter). There's no tracing
+backend deployed yet -- when there is, the change is local to this file,
+nobody else needs to know.
 """
 
 from __future__ import annotations
@@ -35,30 +34,30 @@ _configured = False
 
 
 def setup_tracing(service_name: str = "atlas-api") -> None:
-    """Configura el TracerProvider global una sola vez. Llamarla mas de
-    una vez no duplica el processor (es idempotente)."""
+    """Configures the global TracerProvider once. Idempotent -- calling
+    it more than once does not duplicate the processor."""
     global _configured
     if _configured:
         return
     provider = TracerProvider(
         resource=Resource.create({"service.name": service_name})
     )
-    # SimpleSpanProcessor exporta cada span apenas termina (sincrono).
-    # BatchSpanProcessor lo haria en un hilo aparte y con delay -- bien
-    # para produccion con un backend real, mal para consola/tests locales
-    # (el hilo puede intentar exportar despues de que el proceso/test ya
-    # cerro stdout).
+    # SimpleSpanProcessor exports each span as soon as it ends (sync).
+    # BatchSpanProcessor would do it on a background thread with a delay
+    # -- good for production with a real backend, bad for a console
+    # exporter / local tests (the background thread can try to export
+    # after the process/test has already closed stdout).
     provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(provider)
     _configured = True
 
 
 def record_tier_call(tier_call: TierCall, span_name: str = "token_factory.call") -> None:
-    """Emite un span que representa una llamada YA hecha a Token Factory
-    (real o simulada). No hace la llamada, solo la registra -- por eso
-    reconstruye el tiempo de inicio a partir de latency_ms, para que la
-    duracion del span sea la duracion real de la llamada, no el tiempo
-    que toma registrar el span."""
+    """Emits a span representing a call to Token Factory that ALREADY
+    happened (real or simulated). It doesn't make the call, only records
+    it -- that's why it reconstructs the start time from latency_ms, so
+    the span's duration reflects the actual call duration, not the time
+    it takes to record the span."""
     if not _configured:
         setup_tracing()
 

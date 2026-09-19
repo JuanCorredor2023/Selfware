@@ -1,209 +1,209 @@
-# Atlas — Plan final · Nebius x NVIDIA Global AI Hackathon
+# Atlas — Final Plan · Nebius x NVIDIA Global AI Hackathon
 
-**Track:** Personal AI · **Entrega:** 27 de octubre (deadline oficial 30 oct, 10:00 PT = 11:00 México)
-**Arquitectura:** monolito modular · un repo · un paquete · un deploy · fronteras de módulo explícitas
-**Equipo:** 4 · Video, guion, README, feedback y descripción: **los cuatro**
-
----
-
-## 1. La idea
-
-> Asistente personal sobre correo que organiza el contexto en PARA, **mide** si PARA mejora la recuperación frente a RAG plano, **sabe cuándo no sabe** (y busca en web), y lo muestra en un dashboard donde el juez ve la diferencia en vivo.
-
-**H1:** clasificar en PARA y filtrar por esa estructura mejora *context precision* y *context recall* (RAGAS) frente a un índice plano sobre el mismo corpus. Se reporta **por categoría de pregunta**.
+**Track:** Personal AI · **Submission:** October 27 (official deadline Oct 30, 10:00 PT = 11:00 Mexico City)
+**Architecture:** modular monolith · one repo · one package · one deploy · explicit module boundaries
+**Team:** 4 · Video, script, README, feedback, and description: **all four**
 
 ---
 
-## 2. Diagrama final
+## 1. The idea
 
-Archivo: `atlas_arquitectura_final.mermaid` (se renderiza en GitHub; pégalo en el README).
+> A personal assistant over email that organizes context into PARA, **measures** whether PARA improves retrieval versus flat RAG, **knows when it doesn't know** (and searches the web), and shows it on a dashboard where the judge sees the difference live.
 
-Lectura en una línea: `Gmail + WhoareU.md → ingest (Nano, Serverless Jobs) → context (dos índices vivos) → agent (Ultra, confianza, Tavily) → api/web (toggle, procedencia, costo)`, con `eval` colgando de context y agent, y `observability` envolviendo toda llamada a Token Factory a través de **un solo punto de salida**.
+**H1:** classifying into PARA and filtering by that structure improves *context precision* and *context recall* (RAGAS) versus a flat index over the same corpus. Reported **by question category**.
 
 ---
 
-## 3. Monolito modular: estructura del repo
+## 2. Final diagram
+
+File: `atlas_architecture_final.mermaid` (renders on GitHub; paste it into the README).
+
+One-line read: `Gmail + WhoareU.md → ingest (Nano, Serverless Jobs) → context (two live indexes) → agent (Ultra, confidence, Tavily) → api/web (toggle, provenance, cost)`, with `eval` hanging off context and agent, and `observability` wrapping every call to Token Factory through **a single exit point**.
+
+---
+
+## 3. Modular monolith: repo layout
 
 ```
 atlas/
-├── core/                 # compartido · dueño de esquemas: Persona 1
+├── core/                 # shared · schema owner: Person 1
 │   ├── schemas.py        # Document, ContextItem, Chunk, Provenance, Answer, TierCall
-│   ├── config.py         # settings, umbrales, rutas PARA
-│   └── llm.py            # ÚNICO cliente a Token Factory · emite spans OTel · enruta Nano/Ultra
-├── ingest/               # Persona 1
-│   ├── gmail.py          # conector (IMAP o MCP)
-│   ├── normalize.py      # limpieza, dedup por hash, metadatos
-│   ├── classify.py       # clasificación PARA con Nano
-│   ├── profile.py        # carga WhoareU.md
-│   ├── archive.py        # job: proyecto sin actividad N días → Archive
-│   └── jobs.py           # entrypoints para Nebius Serverless Jobs
-├── context/              # Persona 2
+│   ├── config.py         # settings, thresholds, PARA paths
+│   └── llm.py            # SINGLE client to Token Factory · emits OTel spans · routes Nano/Ultra
+├── ingest/               # Person 1
+│   ├── gmail.py          # connector (IMAP or MCP)
+│   ├── normalize.py      # cleanup, dedup by hash, metadata
+│   ├── classify.py       # PARA classification with Nano
+│   ├── profile.py        # loads WhoareU.md
+│   ├── archive.py        # job: project with no activity for N days → Archive
+│   └── jobs.py           # entrypoints for Nebius Serverless Jobs
+├── context/              # Person 2
 │   ├── store.py          # document store
 │   ├── embed.py          # embeddings
-│   ├── index_flat.py     # índice plano
-│   ├── index_para.py     # índice + filtro estructural PARA
-│   └── retrieve.py       # retrieve(query, strategy, k) → [Chunk con Provenance]
-├── agent/                # Persona 3
-│   ├── answer.py         # agente sobre Ultra
-│   ├── confidence.py     # estimación de confianza por respuesta
-│   ├── abstain.py        # política: confianza < umbral → web
-│   └── tavily.py         # búsqueda web
-├── eval/                 # Persona 3
-│   ├── questions/        # ~200 preguntas, JSONL, etiquetadas por categoría PARA
-│   ├── harness.py        # corre plano vs PARA sobre el set
-│   ├── ragas_runner.py   # métricas RAGAS
-│   └── report.py         # tabla por categoría + curvas costo/latencia
-├── observability/        # Persona 4 (todos instrumentan)
-│   ├── otel.py           # setup OpenTelemetry
-│   └── cost.py           # tokens → costo por escalón
-├── api/                  # Persona 4
+│   ├── index_flat.py     # flat index
+│   ├── index_para.py     # index + structural PARA filter
+│   └── retrieve.py       # retrieve(query, strategy, k) → [Chunk with Provenance]
+├── agent/                # Person 3
+│   ├── answer.py         # agent on top of Ultra
+│   ├── confidence.py     # per-answer confidence estimate
+│   ├── abstain.py        # policy: confidence < threshold → web
+│   └── tavily.py         # web search
+├── eval/                 # Person 3
+│   ├── questions/        # ~200 questions, JSONL, labeled by PARA category
+│   ├── harness.py        # runs flat vs PARA over the set
+│   ├── ragas_runner.py   # RAGAS metrics
+│   └── report.py         # per-category table + cost/latency curves
+├── observability/        # Person 4 (everyone instruments)
+│   ├── otel.py           # OpenTelemetry setup
+│   └── cost.py           # tokens → cost per tier
+├── api/                  # Person 4
 │   └── app.py            # FastAPI: /ask, /ask?strategy=flat|para, /provenance, /cost, /projects
-└── web/                  # Persona 4
-    └── src/              # React: dashboard, toggle, procedencia, panel de costo
+└── web/                  # Person 4
+    └── src/              # React: dashboard, toggle, provenance, cost panel
 tests/
-├── ingest/  context/  agent/  eval/  api/     # cada módulo entrega los suyos
-README.md · LICENSE (Apache 2.0) · FEEDBACK.md · docs/guion_video.md
+├── ingest/  context/  agent/  eval/  api/     # each module ships its own
+README.md · LICENSE (Apache 2.0) · FEEDBACK.md · docs/video_script.md
 ```
 
-### Reglas del monolito
-- **Ningún módulo importa de otro excepto de `core/`.** La comunicación entre módulos es por los contratos de la sección 4. Si necesitas algo de otro módulo, va al contrato, no al import.
-- **Toda llamada a Token Factory pasa por `core/llm.py`.** Es la única forma de que el panel de costo y el cumplimiento sean verificables. Un `grep` por la URL de la API debe encontrar exactamente un archivo.
-- Un solo `pyproject.toml`, un solo comando de arranque, un solo entrypoint de jobs.
+### Monolith rules
+- **No module imports from another except `core/`.** Communication between modules goes through the contracts in section 4. If you need something from another module, it goes into the contract, not into an import.
+- **Every call to Token Factory goes through `core/llm.py`.** It's the only way the cost panel and compliance stay verifiable. A `grep` for the Token Factory URL must find exactly one file.
+- One `pyproject.toml`, one startup command, one jobs entrypoint.
 
 ---
 
-## 4. Contratos entre módulos (se firman el día 5, con datos falsos si hace falta)
+## 4. Contracts between modules (signed on day 5, with fake data if needed)
 
-| Contrato | De → A | Firma |
+| Contract | From → To | Signature |
 |---|---|---|
 | **C1** | ingest → context | `ContextItem(id, source, text, ts, hash, para_path, meta)` |
-| **C2** | context → agent, eval, api | `retrieve(query: str, strategy: "flat" \| "para", k: int) -> list[Chunk]`, con `Chunk(text, item_id, para_path, ts, score)` |
+| **C2** | context → agent, eval, api | `retrieve(query: str, strategy: "flat" \| "para", k: int) -> list[Chunk]`, with `Chunk(text, item_id, para_path, ts, score)` |
 | **C3** | agent → api, eval | `Answer(text, confidence: float, provenance: list[Chunk], used_web: bool, tier_calls: list[TierCall])` |
-| **C4** | core/llm → observability | cada llamada emite `TierCall(model, tokens_in, tokens_out, latency_ms, cost_usd)` |
-| **C5** | ingest/profile → agent | `Profile(text)` desde WhoareU.md, inyectado como system context |
-| **C6** | eval → todos | `questions/*.jsonl`: `{q, expected, category: project\|area\|resource}` |
+| **C4** | core/llm → observability | every call emits `TierCall(model, tokens_in, tokens_out, latency_ms, cost_usd)` |
+| **C5** | ingest/profile → agent | `Profile(text)` from WhoareU.md, injected as system context |
+| **C6** | eval → everyone | `questions/*.jsonl`: `{q, expected, category: project\|area\|resource}` |
 
-Cambiar un contrato requiere avisar a todos y actualizar `core/schemas.py` en el mismo PR.
-
----
-
-## 5. Asignación de módulos
-
-| Persona | Módulos | Es dueño de | Definition of done |
-|---|---|---|---|
-| **1 · Ingesta** | `ingest/`, `core/schemas.py`, `core/config.py`, deploy de Serverless Jobs | El esquema canónico. La compatibilidad con las reglas (Serverless Jobs + Token Factory). | Un job corre en Nebius, lee Gmail, escribe N `ContextItem` clasificados. Archivo automático mueve proyectos inactivos. |
-| **2 · Contexto** | `context/` | Los dos índices vivos y la estrategia de recuperación. La procedencia como dato. | `retrieve()` responde en ambas estrategias con procedencia completa en < 500 ms sobre el corpus real. |
-| **3 · Agente y evaluación** | `agent/`, `eval/` | **El número.** La confianza, el umbral, Tavily. | Reporte RAGAS por categoría, plano vs PARA, reproducible con un comando. Abstención calibrada sobre ese reporte. |
-| **4 · Producto y observabilidad** | `api/`, `web/`, `observability/`, `core/llm.py` | **La evidencia.** Todo lo que el juez ve. El único punto de salida a Token Factory. | Dashboard con toggle, procedencia y panel de costo, desplegado en una URL pública que funciona sin que nadie del equipo esté conectado. |
-
-**Sugerencia de reparto**, la decisión es suya: quien tenga más experiencia en sistemas toma Persona 1 (es la pieza de cumplimiento y del esquema que todos consumen). Quien más quiera aprender evaluación de LLMs toma Persona 3: es el módulo con más aprendizaje transferible y el que produce el resultado.
-
-### Trabajo de los cuatro
-- **Preguntas de evaluación:** 50 por persona sobre su propio correo, etiquetadas. Persona 3 consolida. **No las genera la IA.**
-- **Guion del video:** se escribe en la semana 1 entre los cuatro (`docs/guion_video.md`) y se revisa cada viernes.
-- **Video, README, descripción en Devpost, FEEDBACK.md:** semanas 7-8, los cuatro.
-- **Code review:** nadie mergea sin revisión de otro. Nadie mergea lo que no puede explicar línea por línea.
+Changing a contract requires notifying everyone and updating `core/schemas.py` in the same PR.
 
 ---
 
-## 6. Plan de 6 semanas de construcción + 2 de entrega
+## 5. Module assignment
 
-Cada viernes hay **demo interna de 30 minutos**: cada quien muestra su módulo corriendo, se revisa el guion, se decide qué se corta.
-
-### Semana 1 · 7–13 sep · Cimientos y contratos
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
+| Person | Modules | Owns | Definition of done |
 |---|---|---|---|
-| Repo, Apache 2.0 visible en About, `pyproject`, CI mínimo. `core/schemas.py` v0. Acceso a Gmail funcionando (aunque sea un correo). | Document store vacío + `retrieve()` que devuelve datos falsos con la firma C2. | Formato de `questions/*.jsonl`. Primeras 20 preguntas propias. Esqueleto de `harness.py`. | `core/llm.py` con una llamada real a Nano y otra a Ultra vía Token Factory, emitiendo `TierCall`. FastAPI con `/health`. |
+| **1 · Ingestion** | `ingest/`, `core/schemas.py`, `core/config.py`, Serverless Jobs deploy | The canonical schema. Compliance with the rules (Serverless Jobs + Token Factory). | A job runs on Nebius, reads Gmail, writes N classified `ContextItem`s. Automatic archiving moves inactive projects. |
+| **2 · Context** | `context/` | The two live indexes and the retrieval strategy. Provenance as data. | `retrieve()` answers in both strategies with full provenance in < 500 ms over the real corpus. |
+| **3 · Agent & evaluation** | `agent/`, `eval/` | **The number.** Confidence, the threshold, Tavily. | RAGAS report by category, flat vs PARA, reproducible with one command. Abstention calibrated against that report. |
+| **4 · Product & observability** | `api/`, `web/`, `observability/`, `core/llm.py` | **The evidence.** Everything the judge sees. The single exit point to Token Factory. | Dashboard with toggle, provenance, and cost panel, deployed at a public URL that works with nobody on the team connected. |
 
-**Los cuatro:** guion del video v0 (`docs/guion_video.md`). Inventario de correos: ¿cuántos tenemos? Pedir al usuario externo. Correo a Devpost por el City Winner. Unirse al Builder Program (créditos).
-**Viernes 11:** contratos C1–C6 firmados. Nadie cambia una firma sin PR a `core/`.
+**Suggested split**, the decision is theirs: whoever has the most systems experience takes Person 1 (it's the compliance piece and the schema everyone consumes). Whoever most wants to learn LLM evaluation takes Person 3: it's the module with the most transferable learning and the one that produces the result.
 
-### Semana 2 · 14–20 sep · Cada módulo aislado, funcionando
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
-|---|---|---|---|
-| Conector Gmail real, normalización, dedup por hash. Clasificación PARA con Nano sobre 200 correos reales. Tests de dedup e idempotencia. | Embeddings + índice plano sobre lo que entrega P1. `retrieve("flat")` real. Tests de recuperación. | Agente de respuesta sobre Ultra consumiendo `retrieve()` (aunque sea plano). 50 preguntas propias. Corrida RAGAS sobre plano solo. | `/ask` conectado al agente. Dashboard: layout, lista de proyectos desde PARA (datos falsos). OTel exportando spans. |
-
-**Viernes 18:** primer número, aunque sea solo del baseline. Guion v1.
-
-### Semana 3 · 21–27 sep · Integración fea de punta a punta
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
-|---|---|---|---|
-| Job desplegado en **Serverless Jobs** corriendo la ingesta completa. WhoareU.md cargado. | Índice + filtro PARA. `retrieve("para")` real. **Ambos índices vivos.** | Harness corre plano vs PARA sobre las ~200 preguntas consolidadas. **Primer reporte por categoría.** | `/ask?strategy=` funcionando. Dashboard consume datos reales. Procedencia como dato en la respuesta. |
-
-**Viernes 25 — hito duro:** una pregunta real entra por el dashboard, pasa por ingesta real, dos índices, Ultra, y regresa. Aunque esté feo. Si no pasa, la semana 4 se dedica a que pase y se recorta A6 y A3.
-
-### Semana 4 · 28 sep–4 oct · Iterar sobre el número
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
-|---|---|---|---|
-| Robustez: reintentos, cursor de sincronización, corridas incrementales. Job de archivo automático (A6) si el hito 3 se cumplió. | Ajustar estrategia PARA según lo que el reporte diga (k, filtro, fallback al plano cuando la carpeta está vacía). | Analizar por categoría. Confianza por respuesta (`confidence.py`). Empezar calibración del umbral contra el reporte. | **Toggle** (A1) en el dashboard. **Procedencia visible** (A2). |
-
-**Viernes 2:** número v2 por categoría. Decisión: ¿H1 se sostiene global, o solo por categoría? El guion se ajusta a la respuesta.
-
-### Semana 5 · 5–11 oct · Adiciones y congelamiento
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
-|---|---|---|---|
-| Corrida de ingesta sobre el corpus del usuario externo. Limpieza de datos para el video. | Tests de regresión sobre recuperación. Documentar la estrategia en `docs/`. | **Abstención → Tavily** (A3) con umbral calibrado. Corrida final de evaluación. Reporte final. | **Panel de costo** (A4). Deploy a URL pública estable. |
-
-**Viernes 9 — congelamiento de features.** Después de hoy solo bugs, docs y video. Todo lo que no entró, no entra.
-
-### Semana 6 · 12–18 oct · Estabilidad y documentación
-| Persona 1 | Persona 2 | Persona 3 | Persona 4 |
-|---|---|---|---|
-| README: setup, ejecución, dónde corre Serverless Jobs, dónde entra Nano. | README: cómo funcionan los dos índices, cómo reproducir la recuperación. | README: cómo reproducir el reporte con un comando. Gráficas finales. | README: cómo correr el dashboard. Verificar que la URL pública sobrevive sin nadie conectado. |
-
-**Los cuatro:** `FEEDBACK.md` para Nebius (en serio, es un premio de $100 y diez ganadores). Descripción de Devpost v0. Guion final. Grabar el clip del usuario externo.
-
-### Semanas 7–8 · 19–27 oct · Entrega (los cuatro)
-- **19–23:** grabar el video. Editar. Ver. Regrabar. Tres minutos, con audio explicando Token Factory y Nemotron (requisito).
-- **24–26:** descripción final en Devpost, README final, checklist de reglas (sección 8).
-- **27:** **entregar.** Los tres días restantes son margen, no plan.
+### Work for all four
+- **Evaluation questions:** 50 per person over their own email, labeled. Person 3 consolidates. **Not AI-generated.**
+- **Video script:** written in week 1 by all four (`docs/video_script.md`) and reviewed every Friday.
+- **Video, README, Devpost description, FEEDBACK.md:** weeks 7-8, all four.
+- **Code review:** nobody merges without another person's review. Nobody merges what they can't explain line by line.
 
 ---
 
-## 7. Qué se corta y en qué orden, si hay que cortar
-1. A6 archivo automático
-2. A3 abstención → Tavily (se pierde el bonus, no el proyecto)
-3. A5 usuario externo (si no aparece a tiempo, el corpus es el de los cuatro)
-4. A4 panel de costo (se sustituye por una gráfica estática en el video)
+## 6. 6-week build plan + 2 weeks of delivery
 
-**Nunca se cortan:** los dos índices, el reporte por categoría, el toggle, la procedencia. Sin eso no hay proyecto.
+Every Friday there's a **30-minute internal demo**: everyone shows their module running, the script gets reviewed, and we decide what to cut.
+
+### Week 1 · Sep 7–13 · Foundations & contracts
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| Repo, Apache 2.0 visible in About, `pyproject`, minimal CI. `core/schemas.py` v0. Gmail access working (even for one email). | Empty document store + `retrieve()` returning fake data with the C2 signature. | Format for `questions/*.jsonl`. First 20 own questions. `harness.py` skeleton. | `core/llm.py` with one real call to Nano and one to Ultra via Token Factory, emitting `TierCall`. FastAPI with `/health`. |
+
+**All four:** video script v0 (`docs/video_script.md`). Email inventory: how many do we have? Ask the external user. Email Devpost about City Winner. Join the Builder Program (credits).
+**Friday the 11th:** contracts C1–C6 signed. Nobody changes a signature without a PR to `core/`.
+
+### Week 2 · Sep 14–20 · Each module isolated, working
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| Real Gmail connector, normalization, dedup by hash. PARA classification with Nano over 200 real emails. Dedup and idempotency tests. | Embeddings + flat index over what P1 delivers. Real `retrieve("flat")`. Retrieval tests. | Answering agent on Ultra consuming `retrieve()` (even if flat only). 50 own questions. RAGAS run on flat only. | `/ask` wired to the agent. Dashboard: layout, project list from PARA (fake data). OTel exporting spans. |
+
+**Friday the 18th:** first number, even if just the baseline. Script v1.
+
+### Week 3 · Sep 21–27 · Rough end-to-end integration
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| Job deployed on **Serverless Jobs** running full ingestion. WhoareU.md loaded. | Index + PARA filter. Real `retrieve("para")`. **Both indexes live.** | Harness runs flat vs PARA over the ~200 consolidated questions. **First per-category report.** | `/ask?strategy=` working. Dashboard consumes real data. Provenance as data in the response. |
+
+**Friday the 25th — hard milestone:** a real question goes in through the dashboard, through real ingestion, two indexes, Ultra, and comes back. Even if it's rough. If it doesn't happen, week 4 is dedicated to making it happen, and A6 and A3 get cut.
+
+### Week 4 · Sep 28–Oct 4 · Iterate on the number
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| Robustness: retries, sync cursor, incremental runs. Automatic archiving job (A6) if milestone 3 was met. | Adjust PARA strategy based on what the report says (k, filter, fallback to flat when a folder is empty). | Analyze by category. Per-answer confidence (`confidence.py`). Start calibrating the threshold against the report. | **Toggle** (A1) on the dashboard. **Visible provenance** (A2). |
+
+**Friday the 2nd:** number v2 by category. Decision: does H1 hold globally, or only by category? The script adjusts to the answer.
+
+### Week 5 · Oct 5–11 · Additions & freeze
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| Ingestion run over the external user's corpus. Data cleanup for the video. | Regression tests on retrieval. Document the strategy in `docs/`. | **Abstain → Tavily** (A3) with a calibrated threshold. Final evaluation run. Final report. | **Cost panel** (A4). Deploy to a stable public URL. |
+
+**Friday the 9th — feature freeze.** After today, only bugs, docs, and video. Whatever didn't make it in, doesn't get in.
+
+### Week 6 · Oct 12–18 · Stability & documentation
+| Person 1 | Person 2 | Person 3 | Person 4 |
+|---|---|---|---|
+| README: setup, running it, where Serverless Jobs runs, where Nano fits in. | README: how the two indexes work, how to reproduce retrieval. | README: how to reproduce the report with one command. Final charts. | README: how to run the dashboard. Verify the public URL survives with nobody connected. |
+
+**All four:** `FEEDBACK.md` for Nebius (seriously, it's a $100 prize with ten winners). Devpost description v0. Final script. Record the external user's clip.
+
+### Weeks 7–8 · Oct 19–27 · Delivery (all four)
+- **19–23:** record the video. Edit. Watch it. Re-record. Three minutes, with audio explaining Token Factory and Nemotron (a requirement).
+- **24–26:** final Devpost description, final README, rules checklist (section 8).
+- **27:** **submit.** The remaining three days are buffer, not plan.
 
 ---
 
-## 8. Checklist de cumplimiento (se revisa el 24 de octubre)
-- [ ] Llamada en runtime a Token Factory (`core/llm.py`) y Serverless Jobs desplegado
-- [ ] Al menos un modelo NVIDIA open source: Nemotron Nano y Ultra
-- [ ] Repo público, Apache 2.0 visible en la sección About
-- [ ] README con setup y dónde se usa Nemotron / Token Factory / Serverless Jobs
-- [ ] URL de demo funcional que no dependa de una laptop del equipo
-- [ ] Video ≤ 3 min, YouTube público, con audio sobre Token Factory y Nemotron, sin música con derechos
-- [ ] Todo en inglés (o con traducción)
+## 7. What gets cut, and in what order, if we have to cut
+1. A6 automatic archiving
+2. A3 abstain → Tavily (loses the bonus, not the project)
+3. A5 external user (if one doesn't show up in time, the corpus is just the four of ours)
+4. A4 cost panel (replaced by a static chart in the video)
+
+**Never cut:** the two indexes, the per-category report, the toggle, the provenance. Without those there's no project.
+
+---
+
+## 8. Compliance checklist (reviewed October 24)
+- [ ] Runtime call to Token Factory (`core/llm.py`) and Serverless Jobs deployed
+- [ ] At least one open-source NVIDIA model: Nemotron Nano and Ultra
+- [ ] Public repo, Apache 2.0 visible in the About section
+- [ ] README with setup and where Nemotron / Token Factory / Serverless Jobs are used
+- [ ] Working demo URL that doesn't depend on a team member's laptop
+- [ ] Video ≤ 3 min, public on YouTube, with audio about Token Factory and Nemotron, no copyrighted music
+- [ ] Everything in English (or translated)
 - [ ] Track: Personal AI
-- [ ] Feedback sobre Token Factory, AI Cloud y herramientas NVIDIA
-- [ ] Tavily: llamada funcional en runtime (si A3 sobrevivió)
-- [ ] Ciudad de Builders & Brews indicada, si Devpost confirmó que aplica
+- [ ] Feedback on Token Factory, AI Cloud, and NVIDIA tools
+- [ ] Tavily: working runtime call (if A3 survived)
+- [ ] Builders & Brews city noted, if Devpost confirmed it applies
 
 ---
 
-## 9. Siguientes pasos: los próximos 5 días
+## 9. Next steps: the next 5 days
 
-**Hoy, viernes 4:** decidir quién es Persona 1–4. Nombre del proyecto. Crear el repo con licencia. Registrarse los cuatro en Devpost y en el Builder Program.
+**Today, Friday the 4th:** decide who is Person 1–4. Project name. Create the repo with a license. All four sign up on Devpost and the Builder Program.
 
-**Sábado 5:** cada quien lee la parte del documento de su módulo y escribe, en `docs/<modulo>.md`, tres párrafos: qué hace, qué expone, qué consume. Es el borrador del contrato.
+**Saturday the 5th:** everyone reads their module's part of the document and writes, in `docs/<module>.md`, three paragraphs: what it does, what it exposes, what it consumes. That's the contract draft.
 
-**Domingo 6:** contar correos. Cada quien exporta su Gmail o cuenta cuántos tiene. Si suman menos de 2,000, Persona 3 busca dataset público complementario.
+**Sunday the 6th:** count emails. Everyone exports their Gmail or counts how many they have. If it adds up to under 2,000, Person 3 looks for a complementary public dataset.
 
-**Lunes 7:** Persona 4 hace la primera llamada real a Token Factory. Es el desbloqueo de todo lo demás. Persona 1 sube `core/schemas.py` v0. Correo a Devpost.
+**Monday the 7th:** Person 4 makes the first real call to Token Factory. That's the unlock for everything else. Person 1 pushes `core/schemas.py` v0. Email to Devpost.
 
-**Martes 8:** guion del video v0, los cuatro, una hora. Pedir al usuario externo.
+**Tuesday the 8th:** video script v0, all four, one hour. Ask the external user.
 
-**Viernes 11:** primera demo interna. Contratos firmados.
+**Friday the 11th:** first internal demo. Contracts signed.
 
 ---
 
-## 10. Reglas de trabajo (no cambian)
-- IA para lo que ya sabemos hacer. Humanos para lo que queremos aprender.
-- Nadie mergea código que no puede explicar línea por línea.
-- Cada módulo entrega sus tests. Prueban invariantes que nosotros decidimos.
-- Cada viernes: ¿lo que construimos esta semana sale en el video? Si no, se corta.
-- El video es la calificación.
+## 10. Working rules (don't change)
+- AI for what we already know how to do. Humans for what we want to learn.
+- Nobody merges code they can't explain line by line.
+- Every module ships its own tests. They test invariants we decide on.
+- Every Friday: does what we built this week show up in the video? If not, it gets cut.
+- The video is the grade.
