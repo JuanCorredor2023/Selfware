@@ -1,0 +1,50 @@
+flowchart TB
+    subgraph CTX["context/ · Persona 2"]
+
+        INIT["__init__.py<br/>superficie pública del carril<br/>expone: retrieve() · add_documents()"]
+
+        TYPES["types.py<br/>Chunk · Source · RetrievalResult<br/>define score, no lo calcula<br/>← CONTRATO con C y D"]
+
+        subgraph PURE["Lógica pura · sin web, sin estado global"]
+            RET["retrieve.py<br/>retrieve(query, strategy, k)<br/>bifurca flat / para<br/>fallback a plano"]
+            CLS["classify_query.py<br/>query → 1 categoría PARA<br/>Super vía core/llm.py"]
+        end
+
+        subgraph ISO["Frontera de aislamiento · aquí muere Chroma"]
+            STORE["store.py<br/>traductor: adentro Chroma, afuera tus tipos<br/>_search_flat · _search_filtered · add_documents<br/>normaliza score · valida para_folder"]
+            EMB["embed.py<br/>genera embeddings propios<br/>salvaguarda anti-truncado<br/>(store NO los genera)"]
+        end
+
+        CHROMA[("Chroma<br/>store físico ÚNICO<br/>para_folder = tag/metadata<br/>flat = sin filtro · para = con filtro")]
+
+        subgraph T["tests/"]
+            TR["test_retrieve.py"]
+            TS["test_store.py"]
+            TC["test_classify.py"]
+        end
+    end
+
+    EXT1["Persona 1 · ingest/<br/>docs con para_folder validado"]
+    EXT3["Persona 3 · agent/ + eval/<br/>consume retrieve() · usa score"]
+    EXT4["Persona 4 · api/ + web/<br/>importa retrieve() in-process"]
+    LLM["core/llm.py<br/>Nano · Super · Ultra → Token Factory"]
+
+    INIT --> RET
+    RET --> CLS
+    RET --> STORE
+    CLS -.-> LLM
+    STORE --> EMB
+    STORE --> CHROMA
+    EMB -.-> LLM
+
+    RET -.usa formas.-> TYPES
+    STORE -.emite.-> TYPES
+    CLS -.usa.-> TYPES
+
+    EXT1 -->|add_documents| INIT
+    INIT -->|retrieve| EXT3
+    INIT -->|retrieve| EXT4
+
+    TR -.prueba.-> RET
+    TS -.prueba.-> STORE
+    TC -.prueba.-> CLS
