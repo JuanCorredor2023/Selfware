@@ -14,7 +14,7 @@ isn't used here -- core/llm.py only makes synchronous calls today. Add a
 "batch" variant to this table if/when that changes.
 """
 
-from core.schemas import TierCall
+from selfware.core.schemas import TierCall
 
 # USD per 1,000,000 tokens. Keys MUST match core.llm.MODEL_IDS values
 # exactly (case-sensitive) -- that's the only thing that connects a real

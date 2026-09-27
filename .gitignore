@@ -1,6 +1,10 @@
+@'
 __pycache__/
 *.pyc
+.pytest_cache/
+*.egg-info/
 .venv/
 venv/
 .env
-.pytest_cache/
+chroma_data/
+'@ | Out-File -FilePath .gitignore -Encoding utf8

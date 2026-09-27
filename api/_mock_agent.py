@@ -14,7 +14,7 @@ documents the contract's shape while it isn't signed yet (day 5).
 
 from __future__ import annotations
 
-from core.schemas import Answer, Chunk, TierCall
+from selfware.core.schemas import Answer, Chunk, TierCall
 
 
 def answer_question(query: str, strategy: str) -> Answer:

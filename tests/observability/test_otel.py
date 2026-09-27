@@ -1,4 +1,4 @@
-from core.schemas import TierCall
+from selfware.core.schemas import TierCall
 from observability.otel import record_tier_call, setup_tracing
 
 

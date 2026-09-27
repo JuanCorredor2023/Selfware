@@ -10,7 +10,7 @@ from datetime import datetime
 import pytest
 
 from agent._contracts import Answer, Chunk, Question
-from eval.harness import STRATEGIES, load_questions, run
+from selfware.eval.harness import STRATEGIES, load_questions, run
 
 
 # --------------------------------------------------------------------------

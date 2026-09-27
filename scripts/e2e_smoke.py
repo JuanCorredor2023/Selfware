@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import argparse
 
-from core.llm import Tier, call
+from selfware.core.llm import Tier, call
 from observability.cost import with_cost
 from observability.otel import record_tier_call, setup_tracing
 
