@@ -17,6 +17,18 @@ export const TIER_LABEL = {
   other: "Other",
 };
 
+/** Summary with nothing recorded yet (same shape as GET /cost on a fresh API). */
+export const EMPTY_SUMMARY = {
+  total_usd: 0,
+  per_query_usd: 0,
+  avg_latency_ms: 0,
+  tokens_in: 0,
+  tokens_out: 0,
+  call_count: 0,
+  query_count: 0,
+  tiers: [],
+};
+
 /**
  * @param {Array<{model:string,tokens_in:number,tokens_out:number,latency_ms:number,cost_usd:number}>} calls
  * @param {number} queryCount number of user questions that produced the calls

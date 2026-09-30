@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { API_BASE, USE_MOCKS, askQuestion, fetchCost, fetchPara } from "../api/client";
 import AppShell from "../components/AppShell";
 import AskBox from "../components/AskBox";
 import AnswerCard from "../components/AnswerCard";
@@ -6,23 +7,22 @@ import ParaTracker from "../components/ParaTracker";
 import CostPanel from "../components/CostPanel";
 import CostStrip from "../components/CostStrip";
 import Icon from "../components/Icon";
-import { aggregateCalls } from "../lib/cost";
-import { askMock, EXAMPLE_QUESTIONS } from "../mocks/answers";
-import { historyCalls, HISTORY_QUERY_COUNT } from "../mocks/costHistory";
-import { paraTree } from "../mocks/para";
+import { EMPTY_SUMMARY } from "../lib/cost";
+import { EXAMPLE_QUESTIONS } from "../mocks/answers";
+import { useResource } from "../lib/useResource";
 
-// The only view today. Everything here is backed by mocks (src/mocks/);
-// swapping in the real API later means replacing askMock, paraTree and the
-// cost history with fetch calls, not touching the components.
+// The only view today. All data goes through src/api/client.js: the real
+// FastAPI app by default, or src/mocks/ when VITE_USE_MOCKS=true.
 export default function DashboardView() {
   const [question, setQuestion] = useState("");
   const [strategy, setStrategy] = useState("para");
   const [status, setStatus] = useState("idle"); // idle | loading | error
+  const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState(null); // { answer, question, strategy }
-  const [calls, setCalls] = useState(historyCalls);
-  const [queryCount, setQueryCount] = useState(HISTORY_QUERY_COUNT);
 
-  const summary = useMemo(() => aggregateCalls(calls, queryCount), [calls, queryCount]);
+  const para = useResource(fetchPara);
+  const cost = useResource(fetchCost);
+  const summary = cost.data ?? EMPTY_SUMMARY;
 
   async function ask(text = question) {
     const q = text.trim();
@@ -30,13 +30,13 @@ export default function DashboardView() {
     setQuestion(q);
     setStatus("loading");
     try {
-      const answer = await askMock(q, strategy);
+      const answer = await askQuestion(q, strategy);
       setResult({ answer, question: q, strategy });
-      setCalls((prev) => [...prev, ...answer.tier_calls]);
-      setQueryCount((n) => n + 1);
       setStatus("idle");
+      cost.reload(); // the API just recorded this question's calls
     } catch (err) {
       console.error(err);
+      setErrorMessage(err.message);
       setStatus("error");
     }
   }
@@ -62,7 +62,10 @@ export default function DashboardView() {
           <div className="notice notice--error" role="alert">
             <Icon name="warning" />
             <div>
-              <p><strong>Couldn't get an answer.</strong> The request failed before the agent replied. Check your connection and try again.</p>
+              <p>
+                <strong>Couldn't get an answer.</strong> {errorMessage}{" "}
+                {!USE_MOCKS && <>Check that the API is running (<code className="mono">uvicorn api.app:app --reload</code>) and try again.</>}
+              </p>
               <button type="button" className="btn btn--secondary" onClick={() => ask()}>
                 <Icon name="refresh" /> Retry
               </button>
@@ -86,14 +89,15 @@ export default function DashboardView() {
           </div>
         )}
       </div>
+      {USE_MOCKS && <p className="progress">Mock mode: the API at {API_BASE} is not being used.</p>}
     </div>
   );
 
   return (
     <AppShell
-      left={<ParaTracker tree={paraTree} />}
+      left={<ParaTracker tree={para.data} status={para.status} onRetry={para.reload} />}
       main={main}
-      right={<CostPanel summary={summary} />}
+      right={<CostPanel summary={summary} status={cost.status} onRetry={cost.reload} />}
       strip={(openDrawer) => <CostStrip summary={summary} onOpen={openDrawer} />}
     />
   );

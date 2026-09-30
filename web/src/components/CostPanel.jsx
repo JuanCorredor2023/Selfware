@@ -11,10 +11,19 @@ function Stat({ label, value }) {
 
 // Right rail: glanceable numbers first, per-tier detail on demand.
 // `summary` is the output of aggregateCalls() (lib/cost.js).
-export default function CostPanel({ summary }) {
+export default function CostPanel({ summary, status, onRetry }) {
   return (
     <section className="cost" aria-labelledby="cost-title">
       <h2 id="cost-title" className="section-title">Cost and telemetry</h2>
+      {status === "error" && (
+        <div className="panel-note" role="alert">
+          <p>Couldn't load cost data.</p>
+          <button type="button" className="btn btn--secondary" onClick={onRetry}>Retry</button>
+        </div>
+      )}
+      {status !== "error" && summary.query_count === 0 && (
+        <p className="panel-note">No questions yet. Costs appear after your first question.</p>
+      )}
       <dl className="cost__stats">
         <Stat label="Total cost" value={formatUsd(summary.total_usd)} />
         <Stat label="Per query" value={formatUsd(summary.per_query_usd)} />

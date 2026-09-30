@@ -356,6 +356,9 @@
 .cost__table tbody th { font-weight: 500; }
 
 /* ---------- States ---------- */
+.panel-note { margin-top: var(--space-md); color: var(--color-muted); font-size: 13px; }
+.panel-note .btn { margin-top: var(--space-sm); }
+
 .skeleton, .progress { color: var(--color-muted); font-family: var(--font-mono); font-size: 12px; }
 .skeleton {
   padding: var(--space-lg);
@@ -380,7 +383,7 @@
    Only the dot and the email count of each category remain. */
 @media (min-width: 1024px) and (max-width: 1279.98px) {
   .tracker { padding: var(--space-md) var(--space-xs); }
-  .tracker__title, .tracker__cat-name, .tracker__items { display: none; }
+  .tracker__title, .tracker__cat-name, .tracker__items, .tracker .panel-note { display: none; }
   .tracker__cat-head { flex-direction: column; gap: var(--space-xs); }
   .tracker__cat-count { margin-left: 0; }
 }

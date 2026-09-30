@@ -3,11 +3,18 @@ import { PARA_LABEL } from "../lib/para";
 
 // Left rail: the four PARA categories with their items. When the rail is
 // collapsed to an icon rail (laptop widths), only the dot and count remain.
-export default function ParaTracker({ tree }) {
+export default function ParaTracker({ tree, status, onRetry }) {
   return (
     <nav className="tracker" aria-label="PARA tracker">
       <h2 className="section-title tracker__title">PARA</h2>
-      {tree.map((cat) => {
+      {!tree && status === "loading" && <p className="panel-note" role="status">Loading your PARA folders...</p>}
+      {!tree && status === "error" && (
+        <div className="panel-note" role="alert">
+          <p>Couldn't load your PARA folders.</p>
+          <button type="button" className="btn btn--secondary" onClick={onRetry}>Retry</button>
+        </div>
+      )}
+      {(tree ?? []).map((cat) => {
         const emails = cat.items.reduce((sum, i) => sum + i.email_count, 0);
         return (
           <section key={cat.key} className={`tracker__cat para-${cat.key}`} title={`${PARA_LABEL[cat.key]}: ${emails} emails`}>
