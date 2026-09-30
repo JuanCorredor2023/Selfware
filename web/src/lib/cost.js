@@ -7,6 +7,7 @@
 export function tierOf(model) {
   const id = String(model).toLowerCase();
   if (id.includes("ultra")) return "ultra";
+  if (id.includes("qwen")) return "judge";
   if (id.includes("nano")) return "nano";
   return "other";
 }
@@ -14,6 +15,7 @@ export function tierOf(model) {
 export const TIER_LABEL = {
   nano: "Nemotron Nano",
   ultra: "Nemotron Ultra",
+  judge: "Qwen3 judge",
   other: "Other",
 };
 
@@ -26,6 +28,7 @@ export const EMPTY_SUMMARY = {
   tokens_out: 0,
   call_count: 0,
   query_count: 0,
+  unpriced_calls: 0,
   tiers: [],
 };
 
@@ -70,6 +73,8 @@ export function aggregateCalls(calls, queryCount) {
     tokens_out,
     call_count: calls.length,
     query_count: queryCount,
+    // Calls on a model with no price list entry (their cost is reported as 0).
+    unpriced_calls: calls.filter((c) => tierOf(c.model) === "other").length,
     tiers,
   };
 }

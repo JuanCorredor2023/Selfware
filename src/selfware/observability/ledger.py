@@ -17,12 +17,14 @@ from threading import Lock
 
 from selfware.core.llm import MODEL_IDS
 from selfware.core.schemas import TierCall
+from selfware.observability.cost import is_priced
 
 _TIER_BY_MODEL = {model_id: tier for tier, model_id in MODEL_IDS.items()}
 
 TIER_LABEL = {
     "nano": "Nemotron Nano",
     "ultra": "Nemotron Ultra",
+    "judge": "Qwen3 judge",
     "other": "Other",
 }
 
@@ -88,6 +90,9 @@ class CallLedger:
             "tokens_out": sum(c.tokens_out for c in calls),
             "call_count": len(calls),
             "query_count": query_count,
+            # Calls whose model has no price: their cost_usd is 0.0, so the
+            # total above is understated by the real spend of these calls.
+            "unpriced_calls": sum(1 for c in calls if not is_priced(c.model)),
             "tiers": tiers,
         }
 

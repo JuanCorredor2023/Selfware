@@ -340,6 +340,7 @@
 .tierbar__seg { flex-basis: 0; }
 .tierbar__seg--ultra { background: var(--color-text); }
 .tierbar__seg--nano { background: var(--color-muted); }
+.tierbar__seg--judge { background: var(--color-border-strong); }
 .tierbar__seg--other { background: var(--color-overlay); }
 .tierlegend { display: grid; gap: 4px; margin-top: var(--space-sm); }
 .tierlegend__row { display: flex; align-items: center; gap: var(--space-sm); font-size: 13px; }
@@ -358,6 +359,7 @@
 /* ---------- States ---------- */
 .panel-note { margin-top: var(--space-md); color: var(--color-muted); font-size: 13px; }
 .panel-note .btn { margin-top: var(--space-sm); }
+.panel-note--warn { color: var(--color-low); font-weight: 600; }
 
 .skeleton, .progress { color: var(--color-muted); font-family: var(--font-mono); font-size: 12px; }
 .skeleton {

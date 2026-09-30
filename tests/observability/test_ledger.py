@@ -54,3 +54,19 @@ def test_reset_clears_everything():
     ledger.record_query([call(NANO, 1, 1, 1.0, 0.1)])
     ledger.reset()
     assert ledger.summary()["call_count"] == 0
+
+
+def test_unpriced_calls_are_counted_so_the_understated_total_is_visible():
+    ledger = CallLedger()
+    ledger.record_query([call(NANO, 1, 1, 1.0, 0.1), call("mystery", 1, 1, 1.0, 0.0)])
+    assert ledger.summary()["unpriced_calls"] == 1
+
+
+def test_judge_calls_are_their_own_tier_and_priced():
+    judge = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+    assert tier_of(judge) == "judge"
+    ledger = CallLedger()
+    ledger.record_query([call(judge, 10, 10, 5.0, 0.001)])
+    summary = ledger.summary()
+    assert summary["tiers"][0]["label"] == "Qwen3 judge"
+    assert summary["unpriced_calls"] == 0

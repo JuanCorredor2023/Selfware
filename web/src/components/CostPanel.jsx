@@ -24,6 +24,12 @@ export default function CostPanel({ summary, status, onRetry }) {
       {status !== "error" && summary.query_count === 0 && (
         <p className="panel-note">No questions yet. Costs appear after your first question.</p>
       )}
+      {summary.unpriced_calls > 0 && (
+        <p className="panel-note panel-note--warn" role="status">
+          {summary.unpriced_calls} {summary.unpriced_calls === 1 ? "call uses" : "calls use"} a
+          model with no price, so the total above is understated.
+        </p>
+      )}
       <dl className="cost__stats">
         <Stat label="Total cost" value={formatUsd(summary.total_usd)} />
         <Stat label="Per query" value={formatUsd(summary.per_query_usd)} />
