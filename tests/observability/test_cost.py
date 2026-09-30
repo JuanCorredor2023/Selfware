@@ -1,4 +1,4 @@
-from observability.cost import estimate_cost_usd
+from selfware.observability.cost import estimate_cost_usd
 
 
 def test_estimate_cost_unknown_model_is_zero():
@@ -15,9 +15,7 @@ def test_estimate_cost_nano_matches_price_list():
 
 def test_estimate_cost_ultra_matches_price_list():
     # 1M in @ $1.00 + 1M out @ $3.00 = $4.00 (eu-north1, valid from 01 Jun 2026)
-    cost = estimate_cost_usd(
-        "nvidia/Nemotron-3-Ultra-550b-a55b", 1_000_000, 1_000_000
-    )
+    cost = estimate_cost_usd("nvidia/Nemotron-3-Ultra-550b-a55b", 1_000_000, 1_000_000)
     assert round(cost, 6) == 4.00
 
 

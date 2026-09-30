@@ -1,7 +1,7 @@
 """
 api/app.py -- Person 4.
 
-FastAPI. /ask (contract C3) against a simulated agent (see
+FastAPI (src/selfware/api/app.py). /ask (contract C3) against a simulated agent (see
 api/_mock_agent.py), with cost (observability/cost.py), OpenTelemetry
 traces (observability/otel.py) and the cost ledger (observability/ledger.py)
 wired on top of the response's TierCalls. /cost aggregates that ledger.
@@ -16,11 +16,13 @@ from typing import Literal
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api._mock_agent import answer_question  # TODO(person-3): swap for agent.answer
-from api._mock_para import get_category, get_tree
-from observability.cost import with_cost
-from observability.ledger import ledger
-from observability.otel import record_tier_call, setup_tracing
+from selfware.api._mock_agent import (
+    answer_question,
+)  # TODO(person-3): swap for agent.answer
+from selfware.api._mock_para import get_category, get_tree
+from selfware.observability.cost import with_cost
+from selfware.observability.ledger import ledger
+from selfware.observability.otel import record_tier_call, setup_tracing
 
 setup_tracing(service_name="atlas-api")
 

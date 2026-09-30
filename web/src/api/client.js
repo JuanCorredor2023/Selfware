@@ -57,7 +57,7 @@ export async function fetchPara() {
   return getJson("/para");
 }
 
-/** GET /cost -> aggregate of every TierCall (see observability/ledger.py). */
+/** GET /cost -> aggregate of every TierCall (see src/selfware/observability/ledger.py). */
 export async function fetchCost() {
   if (USE_MOCKS) return aggregateCalls(mockSession.calls, mockSession.queries);
   return getJson("/cost");

@@ -1,7 +1,39 @@
+# Python-generated files
 __pycache__/
-*.pyc
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
 .venv/
 venv/
+
+# Secrets (NEBIUS_API_KEY lives here)
 .env
-.pytest_cache/
+
+# macOS
 .DS_Store
+
+# Private files
+token.json
+credentials.json
+emails.json
+
+# Local Chroma index built from personal email
+chroma_data/
+
+# Questions derived from personal email (R9, D26). The pattern is deliberately
+# specific: questions_enron_*.jsonl or others from the public corpus DO get
+# versioned.
+questions_sebastian_*.jsonl
+
+# Model response cache (D16). The payload is not the problem: the KEY derives
+# from the prompt, and the prompt contains the question.
+.cache/
+
+# Dashboard
+node_modules/

@@ -1,6 +1,6 @@
 import pytest
 
-from observability.ledger import ledger
+from selfware.observability.ledger import ledger
 
 
 @pytest.fixture(autouse=True)

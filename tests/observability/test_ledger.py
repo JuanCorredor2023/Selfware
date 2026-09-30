@@ -1,12 +1,14 @@
-from core.schemas import TierCall
-from observability.ledger import CallLedger, tier_of
+from selfware.core.schemas import TierCall
+from selfware.observability.ledger import CallLedger, tier_of
 
 NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
 ULTRA = "nvidia/Nemotron-3-Ultra-550b-a55b"
 
 
 def call(model, tin, tout, latency, cost):
-    return TierCall(model=model, tokens_in=tin, tokens_out=tout, latency_ms=latency, cost_usd=cost)
+    return TierCall(
+        model=model, tokens_in=tin, tokens_out=tout, latency_ms=latency, cost_usd=cost
+    )
 
 
 def test_tier_of_known_and_unknown_models():
@@ -23,7 +25,9 @@ def test_empty_ledger_summary_is_all_zeros():
 
 def test_summary_sums_and_averages():
     ledger = CallLedger()
-    ledger.record_query([call(NANO, 100, 10, 200.0, 0.001), call(ULTRA, 1000, 100, 1000.0, 0.009)])
+    ledger.record_query(
+        [call(NANO, 100, 10, 200.0, 0.001), call(ULTRA, 1000, 100, 1000.0, 0.009)]
+    )
     ledger.record_query([call(ULTRA, 2000, 200, 1800.0, 0.011)])
     s = ledger.summary()
     assert round(s["total_usd"], 6) == 0.021

@@ -29,9 +29,9 @@ from __future__ import annotations
 
 import argparse
 
-from core.llm import Tier, call
-from observability.cost import with_cost
-from observability.otel import record_tier_call, setup_tracing
+from selfware.core.llm import Tier, call
+from selfware.observability.cost import with_cost
+from selfware.observability.otel import record_tier_call, setup_tracing
 
 # Deliberately small: this is a connectivity + wiring check, not a real
 # question. max_tokens caps the (paid) output; temperature=0 makes the

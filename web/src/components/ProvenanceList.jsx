@@ -14,7 +14,7 @@ function ChunkItem({ chunk }) {
           <Icon name="chevron" size={14} />
           <ParaChip path={chunk.para_path} label={label} />
           <span className="chunk__meta">{formatDate(chunk.ts)}</span>
-          <span className="chunk__meta chunk__score">score {chunk.score.toFixed(2)}</span>
+          <span className="chunk__meta chunk__similarity">similarity {chunk.similarity.toFixed(2)}</span>
         </summary>
         <p className="chunk__text">{chunk.text}</p>
         <p className="chunk__id">{chunk.item_id}</p>
@@ -23,10 +23,10 @@ function ChunkItem({ chunk }) {
   );
 }
 
-// Source chunks behind an answer, collapsed by default, best score first.
+// Source chunks behind an answer, collapsed by default, best similarity first.
 // Email sources and web sources are listed under separate headings.
 export default function ProvenanceList({ chunks }) {
-  const sorted = [...chunks].sort((a, b) => b.score - a.score);
+  const sorted = [...chunks].sort((a, b) => b.similarity - a.similarity);
   const email = sorted.filter((c) => !isWebChunk(c));
   const web = sorted.filter(isWebChunk);
 

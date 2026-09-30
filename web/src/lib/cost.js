@@ -1,9 +1,9 @@
 // Aggregates TierCall records (contract C4) into what the cost panel shows.
 // Until the dashboard is wired to the API, this runs in the browser over the
 // mocked calls. Its output has EXACTLY the shape GET /cost returns
-// (observability/ledger.py), so wiring the real endpoint is a fetch swap.
+// (src/selfware/observability/ledger.py), so wiring the real endpoint is a fetch swap.
 
-// Model tier from the model id. Ids mirror core/llm.py MODEL_IDS.
+// Model tier from the model id. Ids mirror src/selfware/core/llm.py MODEL_IDS.
 export function tierOf(model) {
   const id = String(model).toLowerCase();
   if (id.includes("ultra")) return "ultra";

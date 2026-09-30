@@ -1,0 +1,48 @@
+[project]
+name = "selfware"
+version = "0.1.0"
+description = "Atlas: personal-context assistant comparing flat vs PARA retrieval over your own email"
+readme = "README.md"
+authors = [
+    { name = "dianagrz", email = "dianagarza013@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    # ingest/
+    "google-api-python-client>=2.200.0",
+    "google-auth-httplib2>=0.4.2",
+    "google-auth-oauthlib>=1.4.1",
+    "mail-parser-reply>=1.36",
+    # core/
+    "pydantic>=2.13.5",
+    "openai",
+    "python-dotenv",
+    # context/
+    "chromadb",
+    # api/
+    "fastapi",
+    "uvicorn[standard]",
+    # observability/
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+]
+
+[project.scripts]
+selfware = "selfware:main"
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx",  # fastapi.testclient
+    "pytest>=9.1.1",
+    "ruff>=0.16.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"

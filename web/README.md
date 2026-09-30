@@ -10,7 +10,7 @@ Requirements: Node 20+ and the API running (see the repo root).
 
 ```bash
 # terminal 1, from the repo root
-uvicorn api.app:app --reload          # http://localhost:8000
+uv run uvicorn selfware.api.app:app --reload   # http://localhost:8000
 
 # terminal 2
 cd web
@@ -33,7 +33,7 @@ Both variables are optional. Copy `.env.example` to `.env.local` to set them.
 | `VITE_API_URL` | `http://localhost:8000` | Base URL of the FastAPI app. Set it to the deployed API URL when deploying. |
 | `VITE_USE_MOCKS` | `false` | `true` makes the dashboard ignore the API and use `src/mocks/`. |
 
-The API only allows the origins listed in `api/app.py` (CORS). Update that list
+The API only allows the origins listed in `src/selfware/api/app.py` (CORS). Update that list
 when the dashboard gets a public URL.
 
 ## Layout of `src/`

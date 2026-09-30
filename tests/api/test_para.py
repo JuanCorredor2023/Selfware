@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from api.app import app
+from selfware.api.app import app
 
 client = TestClient(app)
 
@@ -20,10 +20,10 @@ def test_para_returns_the_four_categories_in_order():
 
 def test_every_category_endpoint_matches_the_tree():
     tree = {c["key"]: c["items"] for c in client.get("/para").json()}
-    for key in tree:
+    for key, items in tree.items():
         response = client.get(f"/{key}")
         assert response.status_code == 200
-        assert response.json() == tree[key]
+        assert response.json() == items
 
 
 def test_items_have_the_expected_shape():

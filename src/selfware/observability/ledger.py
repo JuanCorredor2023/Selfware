@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from threading import Lock
 
-from core.llm import MODEL_IDS
-from core.schemas import TierCall
+from selfware.core.llm import MODEL_IDS
+from selfware.core.schemas import TierCall
 
 _TIER_BY_MODEL = {model_id: tier for tier, model_id in MODEL_IDS.items()}
 

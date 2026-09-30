@@ -132,7 +132,7 @@ setting (`prefers-color-scheme`).
 
 - **Plus Jakarta Sans**: headings, `-0.02em` letter spacing.
 - **Inter**: body copy and interface text. Tabular figures (`tnum`) on for tables, metrics and aligned lists.
-- **JetBrains Mono**: telemetry and provenance only (token counts, latencies, costs, model tags, PARA paths, scores).
+- **JetBrains Mono**: telemetry and provenance only (token counts, latencies, costs, model tags, PARA paths, similarity scores).
 - Minimum sizes: 11px for labels/telemetry, 14px for body. Text must reflow and remain usable at 200% browser zoom and larger system text.
 - Prefer self-hosting the fonts (for example `@fontsource`) so the public demo never depends on a third-party CDN.
 
@@ -189,8 +189,8 @@ Every component lists the data it needs. If a field is not in the data contract 
 
 ### 4. Provenance list
 
-- One collapsible card per source chunk, under the answer, collapsed by default, ordered by score.
-- Collapsed row: PARA chip with the full path in mono (for example `projects/thesis`), date, score.
+- One collapsible card per source chunk, under the answer, collapsed by default, ordered by similarity.
+- Collapsed row: PARA chip with the full path in mono (for example `projects/thesis`), date, similarity.
 - Expanded: the snippet text in mono.
 - Sources from the web are visually and textually separated from "From your email".
 
@@ -218,8 +218,8 @@ Every component lists the data it needs. If a field is not in the data contract 
 
 | Source | Fields |
 | --- | --- |
-| Answer (C3) | `text`, `confidence` (0-1), `provenance` (list of chunks), `used_web`, `tier_calls` |
-| Chunk | `text`, `item_id`, `para_path`, `ts`, `score` |
+| Answer (C3) | `text`, `confidence` (0-1), `provenance` (list of chunks), `used_web`, `finish_reason`, `tier_calls` |
+| Chunk | `text`, `item_id`, `para_path`, `ts`, `similarity` (0-1, higher = more relevant) |
 | TierCall (C4) | `model`, `tokens_in`, `tokens_out`, `latency_ms`, `cost_usd` |
 | Project (mock, future `/projects`) | `id`, `name`, `status`, `lastActivity`, `emailCount` |
 | Cost aggregate (future `/cost`) | derived from TierCalls: per-tier cost and share, total, per query, average latency, tokens |

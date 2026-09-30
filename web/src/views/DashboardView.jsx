@@ -64,7 +64,7 @@ export default function DashboardView() {
             <div>
               <p>
                 <strong>Couldn't get an answer.</strong> {errorMessage}{" "}
-                {!USE_MOCKS && <>Check that the API is running (<code className="mono">uvicorn api.app:app --reload</code>) and try again.</>}
+                {!USE_MOCKS && <>Check that the API is running (<code className="mono">uvicorn selfware.api.app:app --reload</code>) and try again.</>}
               </p>
               <button type="button" className="btn btn--secondary" onClick={() => ask()}>
                 <Icon name="refresh" /> Retry

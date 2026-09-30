@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 
-from api.app import app
+from selfware.api.app import app
 
 client = TestClient(app)
 
@@ -16,10 +18,18 @@ def test_ask_returns_answer_shape():
         "confidence",
         "provenance",
         "used_web",
+        "finish_reason",
         "tier_calls",
     }
     assert isinstance(body["text"], str)
     assert isinstance(body["provenance"], list)
+    assert set(body["provenance"][0].keys()) == {
+        "text",
+        "item_id",
+        "para_path",
+        "ts",
+        "similarity",
+    }
     assert isinstance(body["tier_calls"], list)
 
 
@@ -58,15 +68,19 @@ def test_para_is_more_confident_than_flat_on_known_topics():
 
 
 def test_para_only_cites_the_relevant_folder_but_flat_mixes_folders():
-    para_paths = {c["para_path"].split("/")[0] for c in ask(THESIS, "para")["provenance"]}
-    flat_paths = {c["para_path"].split("/")[0] for c in ask(THESIS, "flat")["provenance"]}
+    para_paths = {
+        c["para_path"].split("/")[0] for c in ask(THESIS, "para")["provenance"]
+    }
+    flat_paths = {
+        c["para_path"].split("/")[0] for c in ask(THESIS, "flat")["provenance"]
+    }
     assert len(flat_paths) > len(para_paths) or len(flat_paths) >= 3
 
 
 def test_provenance_chunks_follow_contract_c2_shape():
     for chunk in ask(THESIS, "para")["provenance"]:
-        assert set(chunk.keys()) == {"text", "item_id", "para_path", "ts", "score"}
-        assert 0.0 <= chunk["score"] <= 1.0
+        assert set(chunk.keys()) == {"text", "item_id", "para_path", "ts", "similarity"}
+        assert 0.0 <= chunk["similarity"] <= 1.0
 
 
 def test_unknown_topic_falls_back_to_low_confidence_web_search():
@@ -99,3 +113,11 @@ def test_each_request_gets_fresh_tier_calls():
     first = ask(THESIS, "para")["tier_calls"]
     second = ask(THESIS, "para")["tier_calls"]
     assert first == second
+
+
+def test_answer_reports_finish_reason_and_iso_timestamps():
+    body = ask(THESIS, "para")
+    assert body["finish_reason"] == "stop"
+    for chunk in body["provenance"]:
+        # Chunk.ts is a datetime (contract C2); over HTTP it must be ISO-8601.
+        assert datetime.fromisoformat(chunk["ts"]).tzinfo is not None

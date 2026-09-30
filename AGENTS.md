@@ -6,7 +6,7 @@ rules on any change or test:
 - Never read, print, paste, or upload `NEBIUS_API_KEY`; it can only live
   in the local `.env` file or the deployment's secret manager.
 - Don't make external calls to the model unless they're needed for the
-  current task. To check connectivity, use only `python -m core.llm`: it
+  current task. To check connectivity, use only `python -m selfware.core.llm`: it
   runs one call to Nemotron Nano with output capped at four tokens.
 - Don't use Nemotron Ultra for connectivity checks, debugging, or
   examples. Before a test with Ultra, ingestion, batch evaluation,

@@ -15,7 +15,8 @@ export const EXAMPLE_QUESTIONS = [
   "How do I rotate a JWT signing key?",
 ];
 
-const chunk = (text, item_id, para_path, ts, score) => ({ text, item_id, para_path, ts, score });
+// Contract C2 (Chunk): `similarity` in [0,1], higher = more relevant.
+const chunk = (text, item_id, para_path, ts, similarity) => ({ text, item_id, para_path, ts, similarity });
 
 const TOPICS = [
   {
@@ -97,13 +98,14 @@ const TOPICS = [
 ];
 
 function fallback(question, strategy) {
-  const web = (host, path, snippet, score) =>
-    chunk(snippet, `web:${host}${path}`, "web", "2026-09-29T12:00:00Z", score);
+  const web = (host, path, snippet, similarity) =>
+    chunk(snippet, `web:${host}${path}`, "web", "2026-09-29T12:00:00Z", similarity);
   const isPara = strategy === "para";
   return {
     text: `I couldn't find this in your email, so I searched the web. The results below cover the topic in general terms; I could not check them against anything you wrote, so please verify before relying on them.`,
     confidence: isPara ? 0.38 : 0.31,
     used_web: true,
+    finish_reason: "stop",
     provenance: [
       chunk(`Newsletter mentioning a topic related to “${question}”, without the details you asked about.`, "msg-3702", isPara ? "resources/ml-papers" : "areas/university", "2026-09-08T06:00:00Z", isPara ? 0.34 : 0.29),
       web("docs.example.org", "/guide", `Reference guide with a step-by-step explanation related to “${question}”.`, 0.81),
@@ -122,6 +124,7 @@ export function mockAnswer(question, strategy) {
   return {
     ...variant,
     used_web: false,
+    finish_reason: "stop",
     tier_calls: strategy === "flat" ? topic.calls.flat : topic.calls.para,
   };
 }

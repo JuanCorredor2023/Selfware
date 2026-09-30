@@ -28,7 +28,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
-from core.schemas import TierCall
+from selfware.core.schemas import TierCall
 
 _configured = False
 
@@ -39,9 +39,7 @@ def setup_tracing(service_name: str = "atlas-api") -> None:
     global _configured
     if _configured:
         return
-    provider = TracerProvider(
-        resource=Resource.create({"service.name": service_name})
-    )
+    provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
     # SimpleSpanProcessor exports each span as soon as it ends (sync).
     # BatchSpanProcessor would do it on a background thread with a delay
     # -- good for production with a real backend, bad for a console
@@ -52,7 +50,9 @@ def setup_tracing(service_name: str = "atlas-api") -> None:
     _configured = True
 
 
-def record_tier_call(tier_call: TierCall, span_name: str = "token_factory.call") -> None:
+def record_tier_call(
+    tier_call: TierCall, span_name: str = "token_factory.call"
+) -> None:
     """Emits a span representing a call to Token Factory that ALREADY
     happened (real or simulated). It doesn't make the call, only records
     it -- that's why it reconstructs the start time from latency_ms, so

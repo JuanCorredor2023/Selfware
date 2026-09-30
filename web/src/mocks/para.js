@@ -1,7 +1,7 @@
 // Mock of what a future PARA endpoint would return: the four PARA
 // categories, each with its items. Only "projects" items carry a status.
 // Shape per item: { id, name, email_count, last_activity, status? }
-// (the same field names as GET /para in api/app.py)
+// (the same field names as GET /para in src/selfware/api/app.py)
 export const paraTree = [
   {
     key: "projects",

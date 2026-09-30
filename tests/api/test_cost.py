@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from api.app import app
-from observability.cost import estimate_cost_usd
+from selfware.api.app import app
+from selfware.observability.cost import estimate_cost_usd
 
 client = TestClient(app)
 
