@@ -18,7 +18,7 @@ from typing import Literal
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from core.schemas import TierCall
+from selfware.core.schemas import TierCall
 
 # Loads the local dev .env file without overriding a variable already set
 # by the deployment environment. .env is gitignored.

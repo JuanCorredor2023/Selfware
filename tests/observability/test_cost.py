@@ -1,4 +1,4 @@
-from observability.cost import estimate_cost_usd
+from selfware.observability.cost import estimate_cost_usd
 
 
 def test_estimate_cost_unknown_model_is_zero():

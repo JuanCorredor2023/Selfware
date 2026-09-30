@@ -1,5 +1,5 @@
 from selfware.core.schemas import TierCall
-from observability.otel import record_tier_call, setup_tracing
+from selfware.observability.otel import record_tier_call, setup_tracing
 
 
 def test_setup_tracing_is_idempotent():
