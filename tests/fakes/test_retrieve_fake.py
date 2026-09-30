@@ -132,8 +132,12 @@ def test_the_corpus_has_no_chunks_in_the_empty_folder():
 
 def test_similarity_returns_the_pinned_values():
     """Pins the whole formula: what is hashed, how many bytes, what order, over what."""
-    assert _similarity("which antivirus did I buy?", "itm-01") == pytest.approx(0.0826673626434058)
-    assert _similarity("which antivirus did I buy?", "itm-06") == pytest.approx(0.36267701303586364)
+    assert _similarity("which antivirus did I buy?", "itm-01") == pytest.approx(
+        0.0826673626434058
+    )
+    assert _similarity("which antivirus did I buy?", "itm-06") == pytest.approx(
+        0.36267701303586364
+    )
 
 
 def test_similarity_falls_in_zero_one():

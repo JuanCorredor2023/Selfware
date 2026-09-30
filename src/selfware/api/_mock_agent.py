@@ -14,6 +14,8 @@ documents the contract's shape while it isn't signed yet (day 5).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from selfware.core.schemas import Answer, Chunk, TierCall
 
 
@@ -26,8 +28,8 @@ def answer_question(query: str, strategy: str) -> Answer:
             text=f"[MOCK] snippet related to: {query!r}",
             item_id="mock-item-1",
             para_path="projects/mock-project",
-            ts="2026-09-01T00:00:00Z",
-            score=0.87,
+            ts=datetime(2026, 9, 1, tzinfo=UTC),
+            similarity=0.87,
         ),
     ]
 
@@ -44,5 +46,6 @@ def answer_question(query: str, strategy: str) -> Answer:
         confidence=0.5,
         provenance=fake_chunks,
         used_web=False,
+        finish_reason="stop",
         tier_calls=[fake_tier_call],
     )

@@ -13,7 +13,9 @@ from typing import Literal
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from selfware.api._mock_agent import answer_question  # TODO(person-3): swap for agent.answer
+from selfware.api._mock_agent import (
+    answer_question,
+)  # TODO(person-3): swap for agent.answer
 from selfware.observability.cost import with_cost
 from selfware.observability.otel import record_tier_call, setup_tracing
 

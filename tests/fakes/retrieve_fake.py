@@ -29,7 +29,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Literal
 
-from selfware.agent._contracts import Chunk
+from selfware.core.schemas import Chunk
 
 Strategy = Literal["flat", "para"]
 
@@ -231,7 +231,9 @@ def retrieve_fake(query: str, strategy: Strategy, k: int) -> list[Chunk]:
 
     for chunk in CORPUS:
         if chunk.para_path in folders:
-            new_chunk = replace(chunk, similarity=_similarity(query=query, item_id=chunk.item_id))
+            new_chunk = replace(
+                chunk, similarity=_similarity(query=query, item_id=chunk.item_id)
+            )
             chunks.append(new_chunk)
 
     chunks.sort(key=lambda c: c.similarity, reverse=True)

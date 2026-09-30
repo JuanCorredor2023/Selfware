@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-openai
-python-dotenv
-pytest
-httpx
-opentelemetry-api
-opentelemetry-sdk

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from selfware.agent._contracts import Chunk
+from selfware.core.schemas import Chunk
 from selfware.agent.answer import (
     ABSTENTION_SENTINEL,
     NO_CHUNKS,
@@ -71,9 +71,7 @@ class FakeClient:
                 )
             ]
         )
-        self.chat = SimpleNamespace(
-            completions=SimpleNamespace(create=self._create)
-        )
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
         self._response = response
 
     def _create(self, **kwargs):
@@ -96,7 +94,9 @@ def test_the_fixed_prefix_goes_first():
 def test_the_question_goes_last():
     prompt = build_prompt("which day is it charged?", [chunk("charged on the 14th")])
 
-    assert prompt.index("which day is it charged?") > prompt.index("charged on the 14th")
+    assert prompt.index("which day is it charged?") > prompt.index(
+        "charged on the 14th"
+    )
 
 
 def test_two_different_questions_share_the_prefix():

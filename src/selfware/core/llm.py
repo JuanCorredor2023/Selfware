@@ -70,9 +70,7 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
     model = MODEL_IDS[tier]
 
     start = time.perf_counter()
-    response = client.chat.completions.create(
-        model=model, messages=messages, **kwargs
-    )
+    response = client.chat.completions.create(model=model, messages=messages, **kwargs)
     latency_ms = (time.perf_counter() - start) * 1000
 
     text = response.choices[0].message.content
@@ -90,7 +88,7 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
 
 
 if __name__ == "__main__":
-    # Manual smoke test: python -m core.llm
+    # Manual smoke test: python -m selfware.core.llm
     # A single cheap call to Nano, with capped output. Never use Ultra to
     # check credentials or connectivity.
     text, tc = call(

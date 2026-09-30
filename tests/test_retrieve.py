@@ -10,6 +10,7 @@ Comportamientos:
   - La categoría del resultado SIGUE al classifier (enrutamiento real).
   - k se propaga al store.
 """
+
 import pytest
 from selfware.context.retrieve import Retrieve
 from selfware.context.classifier import Classifier
@@ -18,6 +19,7 @@ from selfware.context.domain import Strategy, ParaFolder, Chunk
 
 class FakeStore:
     """Store falso: devuelve listas fijas y registra con qué k fue llamado."""
+
     def __init__(self, flat_result, filtered_result):
         self._flat = flat_result
         self._filtered = filtered_result
@@ -47,6 +49,7 @@ def make_retriever(flat_result, filtered_result, classifier_category):
 
 # --- FLAT ---
 
+
 def test_flat_categoria_none_sin_fallback():
     r, _ = make_retriever([chunk()], [chunk()], ParaFolder.PROJECTS)
     res = r.retrieve("q", Strategy.FLAT, 5)
@@ -64,6 +67,7 @@ def test_flat_no_usa_el_classifier():
 
 # --- PARA con resultados ---
 
+
 def test_para_con_resultados_usa_categoria_del_classifier():
     r, _ = make_retriever([chunk()], [chunk(), chunk()], ParaFolder.AREAS)
     res = r.retrieve("q", Strategy.PARA, 5)
@@ -73,6 +77,7 @@ def test_para_con_resultados_usa_categoria_del_classifier():
 
 
 # --- PARA con fallback ---
+
 
 def test_para_fallback_cuando_filtrado_vacio():
     # filtrado vacío -> cae a plano, marca fallback, CONSERVA la categoría
@@ -85,6 +90,7 @@ def test_para_fallback_cuando_filtrado_vacio():
 
 # --- Enrutamiento: la categoría sigue al classifier ---
 
+
 @pytest.mark.parametrize("cat", list(ParaFolder))
 def test_enrutamiento_sigue_al_classifier(cat):
     r, _ = make_retriever([chunk()], [chunk()], cat)
@@ -93,6 +99,7 @@ def test_enrutamiento_sigue_al_classifier(cat):
 
 
 # --- k se propaga al store ---
+
 
 def test_k_se_propaga_a_flat():
     r, store = make_retriever([chunk()], [chunk()], ParaFolder.PROJECTS)

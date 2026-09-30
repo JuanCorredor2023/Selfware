@@ -16,10 +16,18 @@ def test_ask_returns_answer_shape():
         "confidence",
         "provenance",
         "used_web",
+        "finish_reason",
         "tier_calls",
     }
     assert isinstance(body["text"], str)
     assert isinstance(body["provenance"], list)
+    assert set(body["provenance"][0].keys()) == {
+        "text",
+        "item_id",
+        "para_path",
+        "ts",
+        "similarity",
+    }
     assert isinstance(body["tier_calls"], list)
 
 

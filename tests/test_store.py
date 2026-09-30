@@ -10,6 +10,7 @@ prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico
   - Ensamblado: los Chunk salen con texto, Source con enum y datetime, score en [0,1].
   - Validación: add_documents vacío lanza.
 """
+
 import pytest
 from selfware.context.store import ChromaStore
 from selfware.context.embedder import Embedder
@@ -23,7 +24,9 @@ def make_store(tmp_path):
     return ChromaStore(embedder=Embedder(), path=str(tmp_path))
 
 
-def make_doc(source_id, category, content="contenido de prueba", date="2026-01-01T00:00:00Z"):
+def make_doc(
+    source_id, category, content="contenido de prueba", date="2026-01-01T00:00:00Z"
+):
     return Document(
         source_id=source_id,
         source="email",
@@ -65,11 +68,13 @@ def test_reclasificacion_por_upsert(tmp_path):
 
 def test_filtro_por_categoria_solo_devuelve_esa(tmp_path):
     store = make_store(tmp_path)
-    store.add_documents([
-        make_doc("m1", "projects"),
-        make_doc("m2", "areas"),
-        make_doc("m3", "projects"),
-    ])
+    store.add_documents(
+        [
+            make_doc("m1", "projects"),
+            make_doc("m2", "areas"),
+            make_doc("m3", "projects"),
+        ]
+    )
     chunks = store.search_filtered("cualquier cosa", ParaFolder.PROJECTS, k=10)
     assert len(chunks) == 2
     assert all(c.source.para_folder == ParaFolder.PROJECTS for c in chunks)
@@ -92,7 +97,9 @@ def test_search_flat_respeta_k(tmp_path):
 
 def test_ensamblado_del_chunk(tmp_path):
     store = make_store(tmp_path)
-    store.add_documents([make_doc("m1", "areas", content="texto exacto", date="2026-03-15T10:30:00Z")])
+    store.add_documents(
+        [make_doc("m1", "areas", content="texto exacto", date="2026-03-15T10:30:00Z")]
+    )
     chunks = store.search_flat("q", k=1)
     c = chunks[0]
     # texto original recuperado

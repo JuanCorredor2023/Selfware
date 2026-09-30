@@ -14,13 +14,8 @@ This module does NOT import `retrieve` or `answer`: it **receives** them (see
 spent, and the day Person 2's real `retrieve` arrives nothing here has to change
 -- the caller changes.
 
-PROVISIONAL IMPORT -- this module imports its contract types from
-`agent/_contracts.py`, and a module importing from another module is exactly what
-the monolith rule forbids. It is done here because `core/schemas.py` belongs to
-Person 1 and does not exist yet, and the alternative -- a second copy of `Chunk`
-and `Answer` living in `eval/` -- risks the two definitions drifting apart, which
-is the failure family of D10 and R14. At integration both files import from
-`core.schemas` and the problem disappears. Tracked in TEMAS_EQUIPO.md.
+Contract types come from `core.schemas`, the single shared definition
+(integration item C2).
 """
 
 import json
@@ -29,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from selfware.agent._contracts import Answer, Chunk, Question
+from selfware.core.schemas import Answer, Chunk, Question
 
 Strategy = Literal["flat", "para"]
 
@@ -117,15 +112,16 @@ def load_questions(path: Path) -> list[Question]:
         if q_id in ids:
             raise ValueError(f"duplicate id: {q_id}")
         question = Question(
-                    id = q_id,
-                    q = dict_line["q"],
-                    expected = dict_line["expected"],
-                    category = dict_line["category"],
-                    evidence = dict_line["evidence"],
-                    answerable = dict_line["answerable"],
-                    hops = dict_line["hops"],
-                    source = dict_line.get("source"),
-                    hard_case = dict_line.get("hard_case", False))
+            id=q_id,
+            q=dict_line["q"],
+            expected=dict_line["expected"],
+            category=dict_line["category"],
+            evidence=dict_line["evidence"],
+            answerable=dict_line["answerable"],
+            hops=dict_line["hops"],
+            source=dict_line.get("source"),
+            hard_case=dict_line.get("hard_case", False),
+        )
         questions.append(question)
         ids.add(dict_line["id"])
 
@@ -183,13 +179,13 @@ def run(
             chunks = retrieve(question.q, strategy, k)
             ans = answer(question.q, chunks)
             record = Record(
-                question_id = question.id,
-                strategy = strategy,
-                text = ans.text,
-                confidence = ans.confidence,
-                n_chunks = len(chunks),
-                finish_reason = ans.finish_reason,
-                flagged = ans.finish_reason != "stop"
+                question_id=question.id,
+                strategy=strategy,
+                text=ans.text,
+                confidence=ans.confidence,
+                n_chunks=len(chunks),
+                finish_reason=ans.finish_reason,
+                flagged=ans.finish_reason != "stop",
             )
             records.append(record)
 

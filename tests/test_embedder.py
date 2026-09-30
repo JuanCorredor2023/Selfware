@@ -9,6 +9,7 @@ Propiedades:
   - Determinismo: mismo texto -> mismo vector, incluso entre instancias.
   - Aislamiento: no contamina el generador random global.
 """
+
 import random
 from selfware.context.embedder import Embedder
 

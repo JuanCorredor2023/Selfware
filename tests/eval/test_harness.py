@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from selfware.agent._contracts import Answer, Chunk, Question
+from selfware.core.schemas import Answer, Chunk, Question
 from selfware.eval.harness import STRATEGIES, load_questions, run
 
 
@@ -114,7 +114,11 @@ def test_it_keeps_the_order_of_the_file(tmp_path):
     write_jsonl(path, [{**ROW, "id": f"sd-p{i:02}"} for i in range(1, 6)])
 
     assert [q.id for q in load_questions(path)] == [
-        "sd-p01", "sd-p02", "sd-p03", "sd-p04", "sd-p05",
+        "sd-p01",
+        "sd-p02",
+        "sd-p03",
+        "sd-p04",
+        "sd-p05",
     ]
 
 
@@ -136,16 +140,21 @@ def test_it_ignores_editorial_fields_not_in_the_contract(tmp_path):
 def test_it_loads_an_unanswerable_question(tmp_path):
     """The abstention ones carry `null` in category, evidence and hops (D21)."""
     path = tmp_path / "abstain.jsonl"
-    write_jsonl(path, [{
-        "id": "sd-ab01",
-        "q": "what is my current rating?",
-        "expected": "Not in the email",
-        "category": None,
-        "evidence": None,
-        "answerable": False,
-        "hops": None,
-        "source": "ai-drafted",
-    }])
+    write_jsonl(
+        path,
+        [
+            {
+                "id": "sd-ab01",
+                "q": "what is my current rating?",
+                "expected": "Not in the email",
+                "category": None,
+                "evidence": None,
+                "answerable": False,
+                "hops": None,
+                "source": "ai-drafted",
+            }
+        ],
+    )
 
     q = load_questions(path)[0]
     assert q.answerable is False
@@ -185,8 +194,10 @@ def test_every_question_goes_through_both_arms():
 
     assert len(rows) == 4
     assert {(r.question_id, r.strategy) for r in rows} == {
-        ("q1", "flat"), ("q1", "para"),
-        ("q2", "flat"), ("q2", "para"),
+        ("q1", "flat"),
+        ("q1", "para"),
+        ("q2", "flat"),
+        ("q2", "para"),
     }
 
 
@@ -196,8 +207,10 @@ def test_the_row_order_is_deterministic():
     rows = run(questions, retrieve_that_always_brings(1), answer_simple())
 
     assert [(r.question_id, r.strategy) for r in rows] == [
-        ("q1", STRATEGIES[0]), ("q1", STRATEGIES[1]),
-        ("q2", STRATEGIES[0]), ("q2", STRATEGIES[1]),
+        ("q1", STRATEGIES[0]),
+        ("q1", STRATEGIES[1]),
+        ("q2", STRATEGIES[0]),
+        ("q2", STRATEGIES[1]),
     ]
 
 
@@ -229,7 +242,9 @@ def test_it_counts_the_retrieved_chunks():
 def test_a_truncated_answer_is_flagged():
     """D17: `finish_reason='length'` means it hit max_tokens. The text looks
     reasonable until you read it in full."""
-    rows = run([question("q1")], retrieve_that_always_brings(1), answer_simple("length"))
+    rows = run(
+        [question("q1")], retrieve_that_always_brings(1), answer_simple("length")
+    )
 
     assert all(r.flagged for r in rows)
     assert all(r.finish_reason == "length" for r in rows)
@@ -243,12 +258,18 @@ def test_a_normal_answer_is_not_flagged():
 
 def test_the_unanswerable_ones_are_run_too():
     """D21: what changes is not the run, it is the evaluation. That is report.py's job."""
-    rows = run([question("ab1", answerable=False)], retrieve_that_always_brings(2), answer_simple())
+    rows = run(
+        [question("ab1", answerable=False)],
+        retrieve_that_always_brings(2),
+        answer_simple(),
+    )
 
     assert len(rows) == 2
 
 
 def test_the_confidence_travels_to_the_row():
-    rows = run([question("q1")], retrieve_that_always_brings(1), answer_simple(confidence=0.42))
+    rows = run(
+        [question("q1")], retrieve_that_always_brings(1), answer_simple(confidence=0.42)
+    )
 
     assert all(r.confidence == pytest.approx(0.42) for r in rows)

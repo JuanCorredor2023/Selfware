@@ -189,11 +189,11 @@ change one line:
 class LLMResult:
     text: str
     finish_reason: str
-    tokens: list[TokenLogprob]   # .token and .logprob, in order
+    tokens: list[TokenLogprob]  # .token and .logprob, in order
     tier_call: TierCall
 
-def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult:
-    ...
+
+def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult: ...
 ```
 
 **Lower-effort alternative:** a `call_raw()` returning `(response, TierCall)` with

@@ -30,7 +30,7 @@ Spanish on purpose. It is experiment data, not prose:
 from collections.abc import Callable
 from pathlib import Path
 
-from selfware.agent._contracts import Answer, Chunk
+from selfware.core.schemas import Answer, Chunk
 from selfware.agent.cache import cache_key, load, save
 from selfware.agent.confidence import TokenLogprob, confidence
 

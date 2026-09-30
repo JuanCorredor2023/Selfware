@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from selfware.agent._contracts import Chunk
+from selfware.core.schemas import Chunk
 from selfware.agent.confidence import (
     ThinkTagNotFoundError,
     TokenLogprob,
@@ -133,7 +133,9 @@ def test_generation_without_marker_raises():
 
 def test_retrieval_uses_the_first_one():
     """D9: the list arrives sorted. The first one is the best, no need to search."""
-    assert retrieval_confidence([chunk(0.82), chunk(0.71), chunk(0.65)]) == pytest.approx(0.82)
+    assert retrieval_confidence(
+        [chunk(0.82), chunk(0.71), chunk(0.65)]
+    ) == pytest.approx(0.82)
 
 
 def test_retrieval_empty_list_is_zero():
