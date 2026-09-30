@@ -11,11 +11,13 @@ prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico
   - Validación: add_documents vacío lanza.
 """
 
-import pytest
-from selfware.context.store import ChromaStore
-from selfware.context.embedder import Embedder
-from selfware.context.domain import Document, ParaFolder
 from datetime import datetime
+
+import pytest
+
+from selfware.context.domain import Document, ParaFolder
+from selfware.context.embedder import Embedder
+from selfware.context.store import ChromaStore
 
 
 def make_store(tmp_path):

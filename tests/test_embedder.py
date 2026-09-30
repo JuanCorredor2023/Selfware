@@ -11,6 +11,7 @@ Propiedades:
 """
 
 import random
+
 from selfware.context.embedder import Embedder
 
 
@@ -51,7 +52,7 @@ def test_textos_distintos_dan_vectores_distintos():
 def test_no_contamina_random_global():
     # Sembrar el global, embeber, y confirmar que la secuencia global no cambió:
     # el Embedder usa una instancia local random.Random, no el módulo global.
-    r = random.Random()
+    random.Random()
     random.seed(12345)
     esperado = random.random()
 

@@ -5,13 +5,12 @@ off: both are three-line toy functions, defined below.
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
 from selfware.core.schemas import Answer, Chunk, Question
 from selfware.eval.harness import STRATEGIES, load_questions, run
-
 
 # --------------------------------------------------------------------------
 # Test doubles
@@ -23,7 +22,7 @@ def chunk(similarity: float = 0.8) -> Chunk:
         text="does not matter",
         item_id="itm-001",
         para_path="areas/finance",
-        ts=datetime(2026, 8, 14),
+        ts=datetime(2026, 8, 14, tzinfo=UTC),
         similarity=similarity,
     )
 

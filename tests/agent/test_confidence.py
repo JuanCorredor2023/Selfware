@@ -5,11 +5,10 @@ same probability p, the geometric mean is exactly p.
 """
 
 import math
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
-from selfware.core.schemas import Chunk
 from selfware.agent.confidence import (
     ThinkTagNotFoundError,
     TokenLogprob,
@@ -18,6 +17,7 @@ from selfware.agent.confidence import (
     generation_confidence,
     retrieval_confidence,
 )
+from selfware.core.schemas import Chunk
 
 
 def tok(text: str, p: float) -> TokenLogprob:
@@ -42,7 +42,7 @@ def chunk(similarity: float) -> Chunk:
         text="does not matter",
         item_id="itm-001",
         para_path="areas/finance",
-        ts=datetime(2026, 8, 14),
+        ts=datetime(2026, 8, 14, tzinfo=UTC),
         similarity=similarity,
     )
 

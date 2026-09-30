@@ -6,12 +6,11 @@ with the same shape as the real one.
 """
 
 import math
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 
-from selfware.core.schemas import Chunk
 from selfware.agent.answer import (
     ABSTENTION_SENTINEL,
     NO_CHUNKS,
@@ -20,7 +19,7 @@ from selfware.agent.answer import (
     make_answerer,
     to_token_logprobs,
 )
-
+from selfware.core.schemas import Chunk
 
 # --------------------------------------------------------------------------
 # Test doubles
@@ -32,7 +31,7 @@ def chunk(text: str, similarity: float = 0.8, day: int = 14) -> Chunk:
         text=text,
         item_id=f"itm-{day:03}",
         para_path="areas/finance",
-        ts=datetime(2026, 8, day),
+        ts=datetime(2026, 8, day, tzinfo=UTC),
         similarity=similarity,
     )
 

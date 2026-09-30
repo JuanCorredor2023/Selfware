@@ -26,7 +26,7 @@ they meant something.
 
 import hashlib
 from dataclasses import replace
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from selfware.core.schemas import Chunk
@@ -56,56 +56,56 @@ CORPUS: tuple[Chunk, ...] = (
         text="FAKE: project note about the September deliverable.",
         item_id="itm-01",
         para_path="projects/atlas",
-        ts=datetime(2026, 9, 1),
+        ts=datetime(2026, 9, 1, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: minutes of the weekly project meeting.",
         item_id="itm-02",
         para_path="projects/atlas",
-        ts=datetime(2026, 9, 8),
+        ts=datetime(2026, 9, 8, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: monthly receipt for a service, amount and reference number.",
         item_id="itm-03",
         para_path="areas/finance",
-        ts=datetime(2026, 7, 9),
+        ts=datetime(2026, 7, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: next month's receipt, same service, different reference.",
         item_id="itm-04",
         para_path="areas/finance",
-        ts=datetime(2026, 8, 9),
+        ts=datetime(2026, 8, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: subscription renewal notice.",
         item_id="itm-05",
         para_path="areas/finance",
-        ts=datetime(2026, 9, 9),
+        ts=datetime(2026, 9, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter, morning edition.",
         item_id="itm-06",
         para_path="resources/newsletters",
-        ts=datetime(2026, 9, 14),
+        ts=datetime(2026, 9, 14, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter from the same day, another edition.",
         item_id="itm-07",
         para_path="resources/newsletters",
-        ts=datetime(2026, 9, 14),
+        ts=datetime(2026, 9, 14, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter from the previous week.",
         item_id="itm-08",
         para_path="resources/newsletters",
-        ts=datetime(2026, 9, 7),
+        ts=datetime(2026, 9, 7, tzinfo=UTC),
         similarity=0.0,
     ),
 )

@@ -1,7 +1,6 @@
-from .domain import RetrievalResult, Strategy, ParaFolder, Chunk
-from .store import ChromaStore
 from .classifier import Classifier
-
+from .domain import Chunk, ParaFolder, RetrievalResult, Strategy
+from .store import ChromaStore
 
 SCHEMA_VERSION = "V1"
 

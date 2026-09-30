@@ -15,8 +15,8 @@ import os
 import time
 from typing import Literal
 
-from openai import OpenAI
 from dotenv import load_dotenv
+from openai import OpenAI
 
 from selfware.core.schemas import TierCall
 

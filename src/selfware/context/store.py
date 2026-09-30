@@ -1,12 +1,11 @@
-from .domain import Document, Chunk, Source, ParaFolder
-from .embedder import Embedder
+import hashlib
+from datetime import datetime
+from typing import Any
 
 from chromadb import PersistentClient, QueryResult
 
-from typing import Any
-import hashlib
-
-from datetime import datetime, UTC
+from .domain import Chunk, Document, ParaFolder, Source
+from .embedder import Embedder
 
 
 class ChromaStore:

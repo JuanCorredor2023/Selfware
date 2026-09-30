@@ -12,19 +12,20 @@ diagnóstico PARA + categoría + fallback=True.
 """
 
 import pytest
-from selfware.context.domain import RetrievalResult, Strategy, ParaFolder
+
+from selfware.context.domain import ParaFolder, RetrievalResult, Strategy
 
 
 # --- Helper: construye un RetrievalResult con defaults válidos y overrides ---
 def make_result(**overrides):
-    base = dict(
-        chunks=[],
-        query_category=None,
-        fell_back_to_flat=False,
-        strategy=Strategy.FLAT,
-        k=5,
-        version="V1",
-    )
+    base = {
+        "chunks": [],
+        "query_category": None,
+        "fell_back_to_flat": False,
+        "strategy": Strategy.FLAT,
+        "k": 5,
+        "version": "V1",
+    }
     base.update(overrides)
     return RetrievalResult(**base)
 
@@ -92,7 +93,8 @@ def test_strategy_es_str():
 
 
 def test_chunk_se_convierte_al_contrato_c2():
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from selfware.context.domain import Chunk, Source
     from selfware.core import schemas
 

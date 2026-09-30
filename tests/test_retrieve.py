@@ -12,9 +12,10 @@ Comportamientos:
 """
 
 import pytest
-from selfware.context.retrieve import Retrieve
+
 from selfware.context.classifier import Classifier
-from selfware.context.domain import Strategy, ParaFolder, Chunk
+from selfware.context.domain import Chunk, ParaFolder, Strategy
+from selfware.context.retrieve import Retrieve
 
 
 class FakeStore:
