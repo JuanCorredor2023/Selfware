@@ -1,0 +1,63 @@
+import { formatInt, formatMs, formatPercent, formatUsd } from "../lib/format";
+
+function Stat({ label, value }) {
+  return (
+    <div className="stat">
+      <dt className="stat__label">{label}</dt>
+      <dd className="stat__value">{value}</dd>
+    </div>
+  );
+}
+
+// Right rail: glanceable numbers first, per-tier detail on demand.
+// `summary` is the output of aggregateCalls() (lib/cost.js).
+export default function CostPanel({ summary }) {
+  return (
+    <section className="cost" aria-labelledby="cost-title">
+      <h2 id="cost-title" className="section-title">Cost and telemetry</h2>
+      <dl className="cost__stats">
+        <Stat label="Total cost" value={formatUsd(summary.totalUsd)} />
+        <Stat label="Per query" value={formatUsd(summary.perQueryUsd)} />
+        <Stat label="Avg latency" value={formatMs(summary.avgLatencyMs)} />
+        <Stat label="Queries" value={formatInt(summary.queryCount)} />
+      </dl>
+
+      <h3 className="cost__sub">Cost by model tier</h3>
+      <div className="tierbar" role="img" aria-label={summary.tiers.map((t) => `${t.label} ${formatPercent(t.costShare)}`).join(", ")}>
+        {summary.tiers.map((t) => (
+          <span key={t.tier} className={`tierbar__seg tierbar__seg--${t.tier}`} style={{ flexGrow: Math.max(t.costShare, 0.02) }} />
+        ))}
+      </div>
+      <ul className="tierlegend">
+        {summary.tiers.map((t) => (
+          <li key={t.tier} className="tierlegend__row">
+            <span className={`tierlegend__swatch tierbar__seg--${t.tier}`} aria-hidden="true" />
+            <span className="tierlegend__name">{t.label}</span>
+            <span className="tierlegend__calls">{t.calls} {t.calls === 1 ? "call" : "calls"}</span>
+            <span className="mono">{formatPercent(t.costShare)}</span>
+          </li>
+        ))}
+      </ul>
+
+      <details className="cost__details">
+        <summary>Tokens and calls per tier</summary>
+        <table className="cost__table">
+          <thead>
+            <tr><th scope="col">Tier</th><th scope="col">Calls</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Cost</th></tr>
+          </thead>
+          <tbody>
+            {summary.tiers.map((t) => (
+              <tr key={t.tier}>
+                <th scope="row">{t.label}</th>
+                <td>{t.calls}</td>
+                <td>{formatInt(t.tokensIn)}</td>
+                <td>{formatInt(t.tokensOut)}</td>
+                <td>{formatUsd(t.costUsd)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </section>
+  );
+}
