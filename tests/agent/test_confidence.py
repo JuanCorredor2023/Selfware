@@ -9,8 +9,8 @@ from datetime import datetime
 
 import pytest
 
-from agent._contracts import Chunk
-from agent.confidence import (
+from selfware.agent._contracts import Chunk
+from selfware.agent.confidence import (
     ThinkTagNotFoundError,
     TokenLogprob,
     answer_tokens,

@@ -29,7 +29,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Literal
 
-from agent._contracts import Chunk
+from selfware.agent._contracts import Chunk
 
 Strategy = Literal["flat", "para"]
 

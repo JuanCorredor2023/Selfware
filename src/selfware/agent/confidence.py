@@ -19,7 +19,7 @@ never decides.
 import math
 from dataclasses import dataclass
 
-from agent._contracts import Chunk
+from selfware.agent._contracts import Chunk
 
 THINK_CLOSE_TAG = "</think>"
 

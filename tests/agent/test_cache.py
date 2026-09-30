@@ -6,7 +6,7 @@ receive. Asking for it is as simple as naming it as a parameter: pytest injects
 it when it sees the name.
 """
 
-from agent.cache import cache_key, load, save
+from selfware.agent.cache import cache_key, load, save
 
 # Throwaway fixture. Unlike the real prompt in `answer.py`, nothing is coupled to
 # this text: the tests only compare keys against each other, so its wording is

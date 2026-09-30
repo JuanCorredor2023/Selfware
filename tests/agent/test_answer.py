@@ -11,8 +11,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent._contracts import Chunk
-from agent.answer import (
+from selfware.agent._contracts import Chunk
+from selfware.agent.answer import (
     ABSTENTION_SENTINEL,
     NO_CHUNKS,
     SYSTEM_INSTRUCTIONS,

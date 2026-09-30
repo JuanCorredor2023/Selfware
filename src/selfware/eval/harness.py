@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from agent._contracts import Answer, Chunk, Question
+from selfware.agent._contracts import Answer, Chunk, Question
 
 Strategy = Literal["flat", "para"]
 
