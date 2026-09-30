@@ -11,9 +11,9 @@ prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico
   - Validación: add_documents vacío lanza.
 """
 import pytest
-from context.store import ChromaStore
-from context.embedder import Embedder
-from context.domain import Document, ParaFolder
+from selfware.context.store import ChromaStore
+from selfware.context.embedder import Embedder
+from selfware.context.domain import Document, ParaFolder
 from datetime import datetime
 
 

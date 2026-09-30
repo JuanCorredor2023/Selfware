@@ -10,7 +10,7 @@ Propiedades:
   - Aislamiento: no contamina el generador random global.
 """
 import random
-from context.embedder import Embedder
+from selfware.context.embedder import Embedder
 
 
 def test_forma_batch_conserva_cantidad_y_orden():

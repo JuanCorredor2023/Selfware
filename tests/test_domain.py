@@ -11,7 +11,7 @@ Y los estados válidos deben construirse sin error, incluido el caso
 diagnóstico PARA + categoría + fallback=True.
 """
 import pytest
-from context.domain import RetrievalResult, Strategy, ParaFolder
+from selfware.context.domain import RetrievalResult, Strategy, ParaFolder
 
 
 # --- Helper: construye un RetrievalResult con defaults válidos y overrides ---

@@ -11,9 +11,9 @@ Comportamientos:
   - k se propaga al store.
 """
 import pytest
-from context.retrieve import Retrieve
-from context.classifier import Classifier
-from context.domain import Strategy, ParaFolder, Chunk
+from selfware.context.retrieve import Retrieve
+from selfware.context.classifier import Classifier
+from selfware.context.domain import Strategy, ParaFolder, Chunk
 
 
 class FakeStore:

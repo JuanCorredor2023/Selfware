@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 @'
 __pycache__/
 *.pyc
@@ -8,3 +9,20 @@ venv/
 .env
 chroma_data/
 '@ | Out-File -FilePath .gitignore -Encoding utf8
+=======
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Private files
+token.json
+credentials.json
+emails.json
+>>>>>>> 8dbb979 (implement Gmail API ingest)
