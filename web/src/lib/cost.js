@@ -1,8 +1,9 @@
 // Aggregates TierCall records (contract C4) into what the cost panel shows.
-// The future GET /cost endpoint should return this same shape, computed on
-// the server from the real TierCalls.
+// Until the dashboard is wired to the API, this runs in the browser over the
+// mocked calls. Its output has EXACTLY the shape GET /cost returns
+// (observability/ledger.py), so wiring the real endpoint is a fetch swap.
 
-// Model tier from the model id. Ids mirror observability/cost.py.
+// Model tier from the model id. Ids mirror core/llm.py MODEL_IDS.
 export function tierOf(model) {
   const id = String(model).toLowerCase();
   if (id.includes("ultra")) return "ultra";
@@ -21,42 +22,42 @@ export const TIER_LABEL = {
  * @param {number} queryCount number of user questions that produced the calls
  */
 export function aggregateCalls(calls, queryCount) {
-  const tiers = {};
-  let totalUsd = 0;
-  let tokensIn = 0;
-  let tokensOut = 0;
+  const byTier = {};
+  let total_usd = 0;
+  let tokens_in = 0;
+  let tokens_out = 0;
   let latency = 0;
 
   for (const c of calls) {
     const key = tierOf(c.model);
-    const t = (tiers[key] ??= { tier: key, calls: 0, costUsd: 0, tokensIn: 0, tokensOut: 0 });
+    const t = (byTier[key] ??= { tier: key, calls: 0, cost_usd: 0, tokens_in: 0, tokens_out: 0 });
     t.calls += 1;
-    t.costUsd += c.cost_usd;
-    t.tokensIn += c.tokens_in;
-    t.tokensOut += c.tokens_out;
-    totalUsd += c.cost_usd;
-    tokensIn += c.tokens_in;
-    tokensOut += c.tokens_out;
+    t.cost_usd += c.cost_usd;
+    t.tokens_in += c.tokens_in;
+    t.tokens_out += c.tokens_out;
+    total_usd += c.cost_usd;
+    tokens_in += c.tokens_in;
+    tokens_out += c.tokens_out;
     latency += c.latency_ms;
   }
 
-  const tierList = Object.values(tiers)
+  const tiers = Object.values(byTier)
     .map((t) => ({
       ...t,
       label: TIER_LABEL[t.tier],
-      callShare: calls.length ? t.calls / calls.length : 0,
-      costShare: totalUsd ? t.costUsd / totalUsd : 0,
+      call_share: calls.length ? t.calls / calls.length : 0,
+      cost_share: total_usd ? t.cost_usd / total_usd : 0,
     }))
-    .sort((a, b) => b.costUsd - a.costUsd);
+    .sort((a, b) => b.cost_usd - a.cost_usd);
 
   return {
-    totalUsd,
-    perQueryUsd: queryCount ? totalUsd / queryCount : 0,
-    avgLatencyMs: calls.length ? latency / calls.length : 0,
-    tokensIn,
-    tokensOut,
-    callCount: calls.length,
-    queryCount,
-    tiers: tierList,
+    total_usd,
+    per_query_usd: queryCount ? total_usd / queryCount : 0,
+    avg_latency_ms: calls.length ? latency / calls.length : 0,
+    tokens_in,
+    tokens_out,
+    call_count: calls.length,
+    query_count: queryCount,
+    tiers,
   };
 }

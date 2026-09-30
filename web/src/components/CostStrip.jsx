@@ -8,9 +8,9 @@ export default function CostStrip({ summary, onOpen }) {
   const ultra = summary.tiers.find((t) => t.tier === "ultra");
   return (
     <div className="strip">
-      <span className="strip__item"><span className="strip__label">Total</span> <span className="mono">{formatUsd(summary.totalUsd)}</span></span>
-      <span className="strip__item"><span className="strip__label">Per query</span> <span className="mono">{formatUsd(summary.perQueryUsd)}</span></span>
-      <span className="strip__item"><span className="strip__label">Nano / Ultra</span> <span className="mono">{formatPercent(nano?.costShare ?? 0)} / {formatPercent(ultra?.costShare ?? 0)}</span></span>
+      <span className="strip__item"><span className="strip__label">Total</span> <span className="mono">{formatUsd(summary.total_usd)}</span></span>
+      <span className="strip__item"><span className="strip__label">Per query</span> <span className="mono">{formatUsd(summary.per_query_usd)}</span></span>
+      <span className="strip__item"><span className="strip__label">Nano / Ultra</span> <span className="mono">{formatPercent(nano?.cost_share ?? 0)} / {formatPercent(ultra?.cost_share ?? 0)}</span></span>
       <button type="button" className="btn btn--ghost strip__open" onClick={onOpen}>
         <Icon name="panel" /> Cost details
       </button>

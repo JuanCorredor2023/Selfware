@@ -8,7 +8,7 @@ export default function ParaTracker({ tree }) {
     <nav className="tracker" aria-label="PARA tracker">
       <h2 className="section-title tracker__title">PARA</h2>
       {tree.map((cat) => {
-        const emails = cat.items.reduce((sum, i) => sum + i.emailCount, 0);
+        const emails = cat.items.reduce((sum, i) => sum + i.email_count, 0);
         return (
           <section key={cat.key} className={`tracker__cat para-${cat.key}`} title={`${PARA_LABEL[cat.key]}: ${emails} emails`}>
             <h3 className="tracker__cat-head">
@@ -22,8 +22,8 @@ export default function ParaTracker({ tree }) {
                   <span className="tracker__item-name">{item.name}</span>
                   <span className="tracker__item-meta">
                     {item.status && <span className={`status status--${item.status}`}>{item.status}</span>}
-                    <span className="mono">{item.emailCount} emails</span>
-                    <span>{formatDate(item.lastActivity)}</span>
+                    <span className="mono">{item.email_count} emails</span>
+                    <span>{formatDate(item.last_activity)}</span>
                   </span>
                 </li>
               ))}
