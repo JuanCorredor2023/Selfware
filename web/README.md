@@ -1,16 +1,56 @@
-# React + Vite
+# Atlas dashboard (web/)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite dashboard for Atlas (repo name: Selfware). It shows the live
+flat-vs-PARA toggle (A1), the provenance behind each answer (A2) and the cost
+panel (A4). The design source of truth is [`DESIGN.md`](DESIGN.md).
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requirements: Node 20+ and the API running (see the repo root).
 
-## React Compiler
+```bash
+# terminal 1, from the repo root
+uv run uvicorn selfware.api.app:app --reload   # http://localhost:8000
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# terminal 2
+cd web
+npm install
+npm run dev                           # http://localhost:5173
+```
 
-## Expanding the Oxlint configuration
+No backend? Run the dashboard on its built-in mocks:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+VITE_USE_MOCKS=true npm run dev
+```
+
+## Configuration
+
+Both variables are optional. Copy `.env.example` to `.env.local` to set them.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `VITE_API_URL` | `http://localhost:8000` | Base URL of the FastAPI app. Set it to the deployed API URL when deploying. |
+| `VITE_USE_MOCKS` | `false` | `true` makes the dashboard ignore the API and use `src/mocks/`. |
+
+The API only allows the origins listed in `src/selfware/api/app.py` (CORS). Update that list
+when the dashboard gets a public URL.
+
+## Layout of `src/`
+
+| Path | What lives there |
+| --- | --- |
+| `api/client.js` | The only place that talks to the API: `askQuestion`, `fetchPara`, `fetchCost`. Switches to mocks with `VITE_USE_MOCKS`. |
+| `views/` | Screens. Today only `DashboardView`. |
+| `components/` | UI pieces (`AskBox`, `AnswerCard`, `ProvenanceList`, `ParaTracker`, `CostPanel`, ...). |
+| `lib/` | Pure helpers: confidence bands, cost aggregation, formatting, `useResource`. |
+| `mocks/` | Fake data shaped exactly like the API's responses. |
+| `styles/tokens.css` | Design tokens (colors, type, spacing). Components use only these variables. |
+
+## Scripts
+
+```bash
+npm run dev      # dev server with hot reload
+npm run build    # production build into dist/
+npm run lint     # oxlint
+```

@@ -4,7 +4,8 @@ core/llm.py -- SINGLE client for this project to Nebius Token Factory.
 Team rule: no other module should call Token Factory directly. A grep for
 "tokenfactory.nebius.com" across the repo must find exactly this file.
 
-Status: DRAFT -- Person 4, week 1 (restart).
+Owner: Person 4. Two entry points: call() returns just the text;
+call_with_logprobs() also returns finish_reason and per-token logprobs.
 Real per-model pricing lives in observability/cost.py, keyed by the
 exact MODEL_IDS strings below (case-sensitive).
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 from typing import Literal
 
 from dotenv import load_dotenv
@@ -31,9 +33,14 @@ BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 MODEL_IDS = {
     "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
     "ultra": "nvidia/Nemotron-3-Ultra-550b-a55b",
+    # The RAGAS judge must be a DIFFERENT model from the generator (D12),
+    # otherwise the metric measures whether the model agrees with itself.
+    # Chosen 2026-09-20; the catalog also lists Qwen/Qwen3-30B-A3B-Instruct-2507
+    # as a cheaper fallback (priced in observability/cost.py).
+    "judge": "Qwen/Qwen3-235B-A22B-Instruct-2507",
 }
 
-Tier = Literal["nano", "ultra"]
+Tier = Literal["nano", "ultra", "judge"]
 
 _client: OpenAI | None = None
 
@@ -52,19 +59,11 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
-    """
-    The project's single entry point to Token Factory.
+def _request(tier: Tier, messages: list[dict], **kwargs):
+    """One chat completion against Token Factory, timed.
 
-    Args:
-        tier: "nano" (PARA classification, cheap) or "ultra" (answering
-            agent, real reasoning).
-        messages: OpenAI-style chat messages
-            ([{"role": ..., "content": ...}]).
-
-    Returns:
-        (response_text, TierCall) -- TierCall is contract C4 towards
-        observability/.
+    Returns (raw SDK response, TierCall). Shared by call() and
+    call_with_logprobs() so the timing and token accounting exist once.
     """
     client = _get_client()
     model = MODEL_IDS[tier]
@@ -73,18 +72,85 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
     response = client.chat.completions.create(model=model, messages=messages, **kwargs)
     latency_ms = (time.perf_counter() - start) * 1000
 
-    text = response.choices[0].message.content
     usage = response.usage
-
     tier_call = TierCall(
         model=model,
         tokens_in=usage.prompt_tokens if usage else 0,
         tokens_out=usage.completion_tokens if usage else 0,
         latency_ms=latency_ms,
-        cost_usd=0.0,  # TODO(person-4): compute via observability/cost.py
+        # Filled by whoever instruments the call: observability.cost.with_cost.
+        # core/ does not import observability/ (see observability/otel.py).
+        cost_usd=0.0,
     )
+    return response, tier_call
 
-    return text, tier_call
+
+def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
+    """
+    The project's single entry point to Token Factory.
+
+    Args:
+        tier: "nano" (PARA classification, cheap), "ultra" (answering
+            agent, real reasoning) or "judge" (evaluation metric model).
+        messages: OpenAI-style chat messages
+            ([{"role": ..., "content": ...}]).
+
+    Returns:
+        (response_text, TierCall) -- TierCall is contract C4 towards
+        observability/.
+
+    Only the text comes back. When the caller also needs the finish reason
+    or the per-token logprobs (the agent's confidence), use
+    call_with_logprobs() instead.
+    """
+    response, tier_call = _request(tier, messages, **kwargs)
+    return response.choices[0].message.content, tier_call
+
+
+@dataclass(frozen=True)
+class TokenLogprob:
+    """One generated token and the log-probability the model gave it."""
+
+    token: str
+    logprob: float
+
+
+@dataclass
+class LLMResult:
+    """Everything the agent needs from one call: the text, WHY it ended, the
+    per-token logprobs (for the confidence score) and the cost record."""
+
+    text: str
+    finish_reason: str
+    tokens: list[TokenLogprob]
+    tier_call: TierCall
+
+
+def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult:
+    """Like call(), but keeps what call() throws away.
+
+    Asks the server for logprobs (pass `top_logprobs=N` in kwargs if the
+    alternatives are wanted too) and returns them with the finish_reason.
+
+    finish_reason is whatever the server said: anything other than "stop"
+    means the answer was cut short (for example "length" when max_tokens ran
+    out -- reasoning models spend most of their budget thinking, so this
+    happens). If the server sends none it is reported as "unknown", never
+    silently treated as a normal end.
+    """
+    kwargs.setdefault("logprobs", True)
+    response, tier_call = _request(tier, messages, **kwargs)
+    choice = response.choices[0]
+
+    content = choice.logprobs.content if choice.logprobs else None
+    tokens = [TokenLogprob(token=t.token, logprob=t.logprob) for t in content or []]
+
+    return LLMResult(
+        text=choice.message.content,
+        finish_reason=choice.finish_reason or "unknown",
+        tokens=tokens,
+        tier_call=tier_call,
+    )
 
 
 if __name__ == "__main__":

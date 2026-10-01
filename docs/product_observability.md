@@ -8,7 +8,9 @@ This module is "the evidence": everything the hackathon judge sees live, and the
 
 ## What it exposes
 
-The API exposes `/health` (ready since week 1), and soon `/ask` and `/ask?strategy=flat|para` (ask the agent, choosing the retrieval strategy), `/provenance` (an answer's provenance: PARA folder + source emails + dates), `/cost` (per-tier cost panel: % Nano vs Ultra, cost per query, latency), and `/projects` (a project tracker derived from PARA). The dashboard exposes the live flat-vs-PARA toggle (A1), visible provenance (A2), and the cost panel (A4).
+The API exposes `/health`, `/ask?q=...&strategy=flat|para` (ask the agent, choosing the retrieval strategy; the answer carries its own provenance: PARA folder + source snippets + dates), `/cost` (per-tier cost panel data: share of Nano vs Ultra, total, cost per query, latency, tokens), and the PARA tree: `/para` (all four categories) plus `/projects`, `/areas`, `/resources` and `/archive`. Today `/ask` and the PARA endpoints are served from mocks (`api/_mock_agent.py`, `api/_mock_para.py`) in the shape the real modules must provide; `/cost` is real (it aggregates the TierCalls that pass through `/ask`). The dashboard exposes the live flat-vs-PARA toggle (A1), visible provenance (A2), and the cost panel (A4).
+
+`core/llm.py` exposes `call(tier, messages)` (text + `TierCall`) and `call_with_logprobs(tier, messages)` (an `LLMResult` with the text, `finish_reason`, per-token logprobs and the `TierCall`, for the agent's confidence score). Tiers: `nano`, `ultra` and `judge` (the evaluation model, a different model from the generator). `observability/cost.py` prices all three; a model without a price logs a warning and is counted in `/cost` as `unpriced_calls` instead of silently costing $0.00.
 
 ## What it consumes
 

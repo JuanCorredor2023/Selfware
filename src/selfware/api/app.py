@@ -1,10 +1,13 @@
 """
 api/app.py -- Person 4.
 
-FastAPI. Week 2: /ask (contract C3) against a simulated agent (see
-api/_mock_agent.py), with cost (observability/cost.py) and OpenTelemetry
-traces (observability/otel.py) already wired on top of the response's
-TierCalls. Still missing /provenance, /cost, /projects.
+FastAPI (src/selfware/api/app.py). /ask (contract C3) against a simulated agent (see
+api/_mock_agent.py), with cost (observability/cost.py), OpenTelemetry
+traces (observability/otel.py) and the cost ledger (observability/ledger.py)
+wired on top of the response's TierCalls. /cost aggregates that ledger.
+/para, /projects, /areas, /resources and /archive serve the mocked PARA tree
+(api/_mock_para.py) in the shape the real index should provide.
+Still missing: /provenance (its data already travels inside /ask).
 """
 
 from dataclasses import asdict
@@ -16,7 +19,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from selfware.api._mock_agent import (
     answer_question,
 )  # TODO(person-3): swap for agent.answer
+from selfware.api._mock_para import get_category, get_tree
 from selfware.observability.cost import with_cost
+from selfware.observability.ledger import ledger
 from selfware.observability.otel import record_tier_call, setup_tracing
 
 setup_tracing(service_name="atlas-api")
@@ -51,4 +56,39 @@ def ask(q: str, strategy: Literal["flat", "para"] = "para") -> dict:
     for tier_call in answer.tier_calls:
         with_cost(tier_call)
         record_tier_call(tier_call)
+    ledger.record_query(answer.tier_calls)
     return asdict(answer)
+
+
+@app.get("/cost")
+def cost() -> dict:
+    """Cost panel data (A4): totals, cost per query, average latency and the
+    split by model tier, aggregated over every question answered since the
+    API started. The prices come from observability/cost.py."""
+    return ledger.summary()
+
+
+@app.get("/para")
+def para() -> list[dict]:
+    """The four PARA categories with their items, in display order."""
+    return get_tree()
+
+
+@app.get("/projects")
+def projects() -> list[dict]:
+    return get_category("projects")
+
+
+@app.get("/areas")
+def areas() -> list[dict]:
+    return get_category("areas")
+
+
+@app.get("/resources")
+def resources() -> list[dict]:
+    return get_category("resources")
+
+
+@app.get("/archive")
+def archive() -> list[dict]:
+    return get_category("archive")

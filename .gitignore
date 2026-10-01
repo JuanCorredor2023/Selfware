@@ -15,6 +15,9 @@ venv/
 # Secrets (NEBIUS_API_KEY lives here)
 .env
 
+# macOS
+.DS_Store
+
 # Private files
 token.json
 credentials.json
