@@ -23,6 +23,7 @@ _TIER_BY_MODEL = {model_id: tier for tier, model_id in MODEL_IDS.items()}
 
 TIER_LABEL = {
     "nano": "Nemotron Nano",
+    "super": "Nemotron Super",
     "ultra": "Nemotron Ultra",
     "judge": "Qwen3 judge",
     "other": "Other",
@@ -30,7 +31,7 @@ TIER_LABEL = {
 
 
 def tier_of(model: str) -> str:
-    """'nano' / 'ultra' for a known model id, 'other' for anything else."""
+    """'nano' / 'super' / 'ultra' / 'judge' for a known model id, 'other' for anything else."""
     return _TIER_BY_MODEL.get(model, "other")
 
 

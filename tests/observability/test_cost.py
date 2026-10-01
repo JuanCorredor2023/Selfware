@@ -37,6 +37,12 @@ def test_estimate_cost_judge_matches_the_model_catalog():
     assert round(cost, 6) == 0.80
 
 
+def test_estimate_cost_super_matches_the_model_catalog():
+    # 1M in @ $0.30 + 1M out @ $0.90 = $1.20 (Token Factory model catalog)
+    cost = estimate_cost_usd("nvidia/nemotron-3-super-120b-a12b", 1_000_000, 1_000_000)
+    assert round(cost, 6) == 1.20
+
+
 def test_every_model_id_in_core_llm_has_a_price():
     # If someone adds a tier to core.llm.MODEL_IDS without pricing it, its
     # calls would silently cost $0.00 (integration_p3.md, B5).

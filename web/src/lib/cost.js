@@ -7,6 +7,7 @@
 export function tierOf(model) {
   const id = String(model).toLowerCase();
   if (id.includes("ultra")) return "ultra";
+  if (id.includes("super")) return "super";
   if (id.includes("qwen")) return "judge";
   if (id.includes("nano")) return "nano";
   return "other";
@@ -14,6 +15,7 @@ export function tierOf(model) {
 
 export const TIER_LABEL = {
   nano: "Nemotron Nano",
+  super: "Nemotron Super",
   ultra: "Nemotron Ultra",
   judge: "Qwen3 judge",
   other: "Other",
