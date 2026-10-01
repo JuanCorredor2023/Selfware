@@ -339,6 +339,7 @@
 .tierbar { display: flex; gap: 2px; height: 10px; border-radius: var(--radius-sm); overflow: hidden; }
 .tierbar__seg { flex-basis: 0; }
 .tierbar__seg--ultra { background: var(--color-text); }
+.tierbar__seg--super { background: var(--color-accent-text); }
 .tierbar__seg--nano { background: var(--color-muted); }
 .tierbar__seg--judge { background: var(--color-border-strong); }
 .tierbar__seg--other { background: var(--color-overlay); }

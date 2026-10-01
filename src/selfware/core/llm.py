@@ -33,6 +33,9 @@ BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 MODEL_IDS = {
     "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
     "ultra": "nvidia/Nemotron-3-Ultra-550b-a55b",
+    # Mid-size Nemotron (120B, 12B active). Id as listed in the Token Factory
+    # model catalog on 2026-09-30 -- note the lowercase, unlike Nano.
+    "super": "nvidia/nemotron-3-super-120b-a12b",
     # The RAGAS judge must be a DIFFERENT model from the generator (D12),
     # otherwise the metric measures whether the model agrees with itself.
     # Chosen 2026-09-20; the catalog also lists Qwen/Qwen3-30B-A3B-Instruct-2507
@@ -40,7 +43,7 @@ MODEL_IDS = {
     "judge": "Qwen/Qwen3-235B-A22B-Instruct-2507",
 }
 
-Tier = Literal["nano", "ultra", "judge"]
+Tier = Literal["nano", "super", "ultra", "judge"]
 
 _client: OpenAI | None = None
 
@@ -90,8 +93,9 @@ def call(tier: Tier, messages: list[dict], **kwargs) -> tuple[str, TierCall]:
     The project's single entry point to Token Factory.
 
     Args:
-        tier: "nano" (PARA classification, cheap), "ultra" (answering
-            agent, real reasoning) or "judge" (evaluation metric model).
+        tier: "nano" (PARA classification, cheap), "super" (mid-size
+            Nemotron), "ultra" (answering agent, real reasoning) or
+            "judge" (evaluation metric model).
         messages: OpenAI-style chat messages
             ([{"role": ..., "content": ...}]).
 

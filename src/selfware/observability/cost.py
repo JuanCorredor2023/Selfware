@@ -1,7 +1,7 @@
 """
 observability/cost.py -- Person 4.
 
-Converts tokens -> USD cost per model (Nano, Ultra and the eval judge).
+Converts tokens -> USD cost per model (Nano, Super, Ultra and the eval judge).
 
 Status: real prices, region eu-north1, from
 https://tokenfactory.nebius.com/organization/prices (checked 2026-09-19).
@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 PRICE_PER_MILLION_TOKENS_USD = {
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": {"input": 0.06, "output": 0.24},
     "nvidia/Nemotron-3-Ultra-550b-a55b": {"input": 1.00, "output": 3.00},
+    # Nemotron Super (core.llm.MODEL_IDS["super"]). Source: model-catalog.md,
+    # checked 2026-09-30; confirm on the organization price page like the judge.
+    "nvidia/nemotron-3-super-120b-a12b": {"input": 0.30, "output": 0.90},
     # Evaluation judge (core.llm.MODEL_IDS["judge"]) and its cheaper fallback.
     # Source: https://tokenfactory.nebius.com/model-catalog.md, checked
     # 2026-09-30. The catalog does not state region or a valid-from date:

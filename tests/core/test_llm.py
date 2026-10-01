@@ -66,6 +66,11 @@ def test_call_returns_text_and_a_tier_call(monkeypatch):
     assert "logprobs" not in fake.last_request  # call() is unchanged
 
 
+def test_super_tier_exists_and_is_distinct():
+    assert llm.MODEL_IDS["super"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert llm.MODEL_IDS["super"] not in (llm.MODEL_IDS["nano"], llm.MODEL_IDS["ultra"])
+
+
 def test_call_routes_the_judge_tier_to_the_judge_model(monkeypatch):
     fake = with_fake_client(monkeypatch, make_response())
     llm.call("judge", MESSAGES)

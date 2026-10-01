@@ -70,3 +70,13 @@ def test_judge_calls_are_their_own_tier_and_priced():
     summary = ledger.summary()
     assert summary["tiers"][0]["label"] == "Qwen3 judge"
     assert summary["unpriced_calls"] == 0
+
+
+def test_super_calls_are_their_own_tier_and_priced():
+    model = "nvidia/nemotron-3-super-120b-a12b"
+    assert tier_of(model) == "super"
+    ledger = CallLedger()
+    ledger.record_query([call(model, 10, 10, 5.0, 0.001)])
+    summary = ledger.summary()
+    assert summary["tiers"][0]["label"] == "Nemotron Super"
+    assert summary["unpriced_calls"] == 0
