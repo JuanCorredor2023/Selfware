@@ -18,6 +18,9 @@ class Strategy(str, Enum):
     PARA = "para"
 
 
+class QueryInstruction(str, Enum):
+    RELEVANT_EMAILS = "Given a search query, retrieve relevant emails that answer the query"
+
 @dataclass
 class Source:
     source_id: str
@@ -25,6 +28,7 @@ class Source:
     chunk_index: int
     para_folder: ParaFolder
     date: datetime
+
 
 
 @dataclass

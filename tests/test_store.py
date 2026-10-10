@@ -10,20 +10,40 @@ prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico
   - Ensamblado: los Chunk salen con texto, Source con enum y datetime, score en [0,1].
   - Validación: add_documents vacío lanza.
 """
-
+import hashlib
+import random
 from datetime import datetime
 
 import pytest
 
 from selfware.context.domain import Document, ParaFolder
-from selfware.context.embedder import Embedder
 from selfware.context.store import ChromaStore
 
+
+class FakeEmbedder:
+    """Embedder de mentira para tests: vectores deterministas por hash, sin red.
+    Cumple la MISMA forma que el Embedder real (embed_documents / embed_query)
+    para que sea intercambiable por inyección. No aplica prefijos de verdad
+    porque sus vectores no tienen sentido semántico -- solo imita la forma."""
+
+    def __init__(self, dimensions: int = 4096):
+        self.dimensions = dimensions
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [self._to_embedding(text) for text in texts]
+
+    def embed_query(self, query: str) -> list[float]:
+        return self._to_embedding(query)
+
+    def _to_embedding(self, text: str) -> list[float]:
+        seed = int(hashlib.sha256(text.encode('utf-8')).hexdigest(), 16)
+        rng = random.Random(seed)
+        return [rng.random() for _ in range(self.dimensions)]
 
 def make_store(tmp_path):
     # tmp_path es una fixture de pytest: un directorio temporal único por test.
     # Así cada test corre contra una colección Chroma limpia y aislada.
-    return ChromaStore(embedder=Embedder(), path=str(tmp_path))
+    return ChromaStore(embedder=FakeEmbedder(), path=str(tmp_path))
 
 
 def make_doc(

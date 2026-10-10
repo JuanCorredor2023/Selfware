@@ -29,7 +29,7 @@ class ChromaStore:
         ids: list[str] = []
 
         raw_texts = self._isolate_texts(documents)
-        embeddings = self.embedder.embed(raw_texts)
+        embeddings = self.embedder.embed_documents(raw_texts)
 
         metadatas: list[dict[str, str]] = []
 
@@ -159,9 +159,7 @@ class ChromaStore:
 
     def search_flat(self, query: str, k: int) -> list[Chunk]:
 
-        queries: list[str] = [query]
-
-        query_embedding: list[float] = self.embedder.embed(queries)[0]
+        query_embedding: list[float] = self.embedder.embed_query(query)
 
         search_results: QueryResult = self.collection.query(
             query_embeddings=[query_embedding],
@@ -183,9 +181,7 @@ class ChromaStore:
 
     def search_filtered(self, query: str, category: ParaFolder, k: int) -> list[Chunk]:
 
-        queries: list[str] = [query]
-
-        query_embedding: list[float] = self.embedder.embed(queries)[0]
+        query_embedding: list[float] = self.embedder.embed_query(query)
 
         search_results: QueryResult = self.collection.query(
             query_embeddings=[query_embedding],

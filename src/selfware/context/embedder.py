@@ -1,29 +1,33 @@
-import hashlib
-import random
+from selfware.context.domain import QueryInstruction
+from selfware.core.llm import embed
 
 
 class Embedder:
-    def __init__(self):
+    def __init__(self, task_description: QueryInstruction = QueryInstruction.RELEVANT_EMAILS):
 
-        self.dimensions = 384
+        self.task_description = task_description
 
-    def embed(self, raw_documents: list[str]) -> list[list[float]]:
+        self.dimensions = 4096 # up to date with core/llm.py quwen3 endpoint
 
-        embeddings: list[list[float]] = []
+    def embed_query(self, query: str) -> list[float]:
 
-        for document in raw_documents:
-            embeddings.append(self._to_embedding(document))
+        instruct_query = self._build_instruct_query(query)
 
-        return embeddings
+        vector, _ = embed([instruct_query])
 
-    def _to_embedding(self, raw_document: str) -> list[float]:
+        return vector[0]
+        
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
 
-        hash_obj = hashlib.sha256(raw_document.encode("utf-8"))
-        res_hex = hash_obj.hexdigest()
-        seed = int(res_hex, 16)
+        vectors, _ = embed(texts)
 
-        rng = random.Random(seed)
+        return vectors
 
-        embedding: list[float] = [rng.random() for _ in range(self.dimensions)]
 
-        return embedding
+    def _build_instruct_query(self, query: str):
+
+        instruct_query : str = f"Instruct: {self.task_description.value}\nQuery: {query}"
+
+        return instruct_query
+
+

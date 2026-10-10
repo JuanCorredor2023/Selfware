@@ -157,8 +157,8 @@ def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult:
         tier_call=tier_call,
     )
 
-def embed(texts: List[str], **kwargs):
-     """
+def embed(texts: list[str], **kwargs):
+    """
     Embeddings against Token Factory. Parallel to call(), but hits the
     embeddings endpoint instead of chat completions.
 
@@ -176,6 +176,7 @@ def embed(texts: List[str], **kwargs):
         cost/telemetry contract call() returns, with tokens_out=0 because the
         embeddings endpoint generates no completion tokens.
     """
+
     client = _get_client()
     model  = MODEL_IDS["embedding"]
 
@@ -183,8 +184,8 @@ def embed(texts: List[str], **kwargs):
     response = client.embeddings.create(model=model, input=texts, **kwargs)
     latency_ms = (time.perf_counter() - start) * 1000
 
-    ordered = sorted(response.data, key=lambda, item: item.index)
-    vector = [item.embedding for item in ordered]
+    ordered = sorted(response.data, key=lambda item: item.index)
+    vectors = [item.embedding for item in ordered]
 
     usage = response.usage
     tier_call = TierCall(

@@ -36,6 +36,7 @@ PRICE_PER_MILLION_TOKENS_USD = {
     # confirm against the organization price page like the two above.
     "Qwen/Qwen3-235B-A22B-Instruct-2507": {"input": 0.20, "output": 0.60},
     "Qwen/Qwen3-30B-A3B-Instruct-2507": {"input": 0.10, "output": 0.30},
+     "Qwen/Qwen3-Embedding-8B": {"input": 0.01, "output": 0.0},
 }
 
 # Models already reported as unpriced, so the warning is logged once each.
