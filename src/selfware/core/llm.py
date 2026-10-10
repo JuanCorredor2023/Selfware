@@ -41,6 +41,7 @@ MODEL_IDS = {
     # Chosen 2026-09-20; the catalog also lists Qwen/Qwen3-30B-A3B-Instruct-2507
     # as a cheaper fallback (priced in observability/cost.py).
     "judge": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "embedder":"Qwen/Qwen3-Embedding-8B" 
 }
 
 Tier = Literal["nano", "super", "ultra", "judge"]
@@ -155,6 +156,47 @@ def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult:
         tokens=tokens,
         tier_call=tier_call,
     )
+
+def embed(texts: List[str], **kwargs):
+     """
+    Embeddings against Token Factory. Parallel to call(), but hits the
+    embeddings endpoint instead of chat completions.
+
+    Args:
+        texts: the strings to embed. The caller applies any query/document
+            prefix BEFORE calling this -- embed() is prefix-agnostic, it just
+            turns text into vectors (asymmetric retrieval logic lives in the
+            retrieval lane, not here).
+        **kwargs: forwarded to the endpoint (e.g. dimensions=1024 to truncate
+            via MRL; omitted here means the model's default dimension).
+
+    Returns:
+        (vectors, TierCall) -- vectors[i] corresponds to texts[i], order
+        preserved by sorting on the response's .index. TierCall is the same
+        cost/telemetry contract call() returns, with tokens_out=0 because the
+        embeddings endpoint generates no completion tokens.
+    """
+    client = _get_client()
+    model  = MODEL_IDS["embedding"]
+
+    start = time.perf_counter()
+    response = client.embeddings.create(model=model, input=texts, **kwargs)
+    latency_ms = (time.perf_counter() - start) * 1000
+
+    ordered = sorted(response.data, key=lambda, item: item.index)
+    vector = [item.embedding for item in ordered]
+
+    usage = response.usage
+    tier_call = TierCall(
+        model=model,
+        tokens_in=usage.prompt_tokens if usage else 0,
+        tokens_out=0,
+        latency_ms=latency_ms,
+        # Filled by whoever instruments the call: observability.cost.with_cost.
+        # core/ does not import observability/ (see observability/otel.py).
+        cost_usd=0.0,
+    )
+    return vectors, tier_call
 
 
 if __name__ == "__main__":
