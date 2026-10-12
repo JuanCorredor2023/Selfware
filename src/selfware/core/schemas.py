@@ -27,9 +27,6 @@ class ContextItem(BaseModel):
     source: Literal["gmail"]  # more sources will come later
     text: str
     ts: datetime
-    hash: str
-    para_path: str | None  # None until the PARA classifier runs
-    meta: dict
 
 
 @dataclass

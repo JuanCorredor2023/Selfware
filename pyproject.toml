@@ -25,6 +25,17 @@ dependencies = [
     # observability/
     "opentelemetry-api",
     "opentelemetry-sdk",
+    # eval/ -- these three pins keep RAGAS working (integration_p3.md D2, D30).
+    # Don't loosen them without reading why:
+    # ragas: 0.3.9+ depends on `instructor`, which pins openai<2.0.0, and the
+    # rest of the project runs on openai 3.x. This is what the resolver
+    # produces, not a preference.
+    "ragas==0.3.1",
+    # ragas 0.3.1 imports `langchain_community.chat_models.vertexai`, which
+    # 0.4 removed. Upgrading this breaks the whole evaluation at import time.
+    "langchain-community<0.4",
+    # ragas 0.3.1 imports PIL without declaring it as a dependency.
+    "pillow",
 ]
 
 [project.scripts]
