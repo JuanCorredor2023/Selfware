@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 import pytest
 
 from selfware.core.schemas import Answer, Chunk, Question
-from selfware.eval.harness import STRATEGIES, load_questions, run
+from selfware.eval.harness import STRATEGIES, Retrieved, load_questions, run
 
 # --------------------------------------------------------------------------
 # Test doubles
@@ -44,7 +44,7 @@ def retrieve_that_always_brings(n: int):
     """Return a retrieval function that always hands back `n` chunks."""
 
     def _retrieve(query, strategy, k):
-        return [chunk(0.9 - i * 0.1) for i in range(min(n, k))]
+        return Retrieved(chunks=[chunk(0.9 - i * 0.1) for i in range(min(n, k))])
 
     return _retrieve
 
@@ -54,9 +54,41 @@ def retrieve_that_records(log: list):
 
     def _retrieve(query, strategy, k):
         log.append((query, strategy, k))
-        return [chunk()]
+        return Retrieved(chunks=[chunk()])
 
     return _retrieve
+
+
+def retrieve_like_person_2(fallback_on: set[str]):
+    """Mimics the real retriever's extra outputs (F4): the PARA arm classifies
+    into `"areas"` and falls back to flat for the questions in `fallback_on`."""
+
+    def _retrieve(query, strategy, k):
+        if strategy == "flat":
+            return Retrieved(chunks=[chunk()])
+        return Retrieved(
+            chunks=[chunk()],
+            fell_back_to_flat=query in fallback_on,
+            query_category="areas",
+        )
+
+    return _retrieve
+
+
+def answer_that_records(log: list):
+    """Toy agent that notes down exactly what `chunks` it was handed."""
+
+    def _answer(query, chunks):
+        log.append(chunks)
+        return Answer(
+            text="an answer",
+            confidence=0.5,
+            provenance=list(chunks),
+            used_web=False,
+            finish_reason="stop",
+        )
+
+    return _answer
 
 
 def answer_simple(finish_reason: str = "stop", confidence: float = 0.7):
@@ -272,3 +304,96 @@ def test_the_confidence_travels_to_the_row():
     )
 
     assert all(r.confidence == pytest.approx(0.42) for r in rows)
+
+
+# --------------------------------------------------------------------------
+# F4: what retrieve says beyond the chunks travels to the row
+# --------------------------------------------------------------------------
+
+
+def test_the_answer_receives_only_the_chunks():
+    """The agent's contract is (question, list[Chunk]): handing it the whole
+    Retrieved would break `build_prompt` the first time it iterates."""
+    log = []
+
+    run([question("q1")], retrieve_that_always_brings(2), answer_that_records(log))
+
+    assert all(isinstance(chunks, list) for chunks in log)
+    assert all(isinstance(c, Chunk) for chunks in log for c in chunks)
+
+
+def test_the_fallback_travels_to_the_para_row():
+    q = question("q1")
+    rows = run([q], retrieve_like_person_2(fallback_on={q.q}), answer_simple())
+    flat, para = rows
+
+    assert flat.fell_back_to_flat is False
+    assert para.fell_back_to_flat is True
+
+
+def test_no_fallback_is_recorded_as_false():
+    rows = run(
+        [question("q1")], retrieve_like_person_2(fallback_on=set()), answer_simple()
+    )
+
+    assert [r.fell_back_to_flat for r in rows] == [False, False]
+
+
+def test_the_query_category_travels_to_the_row():
+    rows = run([question("q1")], retrieve_like_person_2(set()), answer_simple())
+    flat, para = rows
+
+    assert flat.query_category is None
+    assert para.query_category == "areas"
+
+
+# --------------------------------------------------------------------------
+# Step 7a: the chunk texts travel to the row, for RAGAS
+# --------------------------------------------------------------------------
+
+
+def retrieve_texts(*texts: str):
+    """Retrieval that hands back chunks with these texts, in this order."""
+
+    def _retrieve(query, strategy, k):
+        return Retrieved(
+            chunks=[
+                Chunk(
+                    text=t,
+                    item_id=f"itm-{i}",
+                    para_path="areas",
+                    ts=datetime(2026, 9, 1, tzinfo=UTC),
+                    similarity=0.9 - i * 0.1,
+                )
+                for i, t in enumerate(texts)
+            ]
+        )
+
+    return _retrieve
+
+
+def test_the_chunk_texts_travel_to_the_row_in_order():
+    """D9: the order is retrieval's. RAGAS context precision is rank-aware, so
+    reordering here would change the number."""
+    rows = run([question("q1")], retrieve_texts("first", "second"), answer_simple())
+
+    assert all(r.contexts == ("first", "second") for r in rows)
+
+
+def test_contexts_is_a_tuple():
+    """A frozen row whose contexts could still be edited would not be frozen."""
+    rows = run([question("q1")], retrieve_texts("only"), answer_simple())
+
+    assert all(isinstance(r.contexts, tuple) for r in rows)
+
+
+def test_contexts_and_n_chunks_agree():
+    rows = run([question("q1")], retrieve_that_always_brings(3), answer_simple())
+
+    assert all(len(r.contexts) == r.n_chunks == 3 for r in rows)
+
+
+def test_no_chunks_means_no_contexts():
+    rows = run([question("q1")], retrieve_that_always_brings(0), answer_simple())
+
+    assert all(r.contexts == () for r in rows)

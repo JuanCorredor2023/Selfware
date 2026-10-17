@@ -32,8 +32,47 @@ Strategy = Literal["flat", "para"]
 #: of the same set have to produce the rows in the same sequence.
 STRATEGIES: tuple[Strategy, ...] = ("flat", "para")
 
+
+@dataclass(frozen=True)
+class Retrieved:
+    """What one call to `retrieve` hands the harness (contract C2, F4).
+
+    Not just the chunks. Person 2's `retrieve()` also says whether the PARA arm
+    **fell back to flat** and which folder the classifier chose, and flattening
+    that to a list throws away the most valuable thing in the result: a question
+    where PARA served flat results is not a PARA result, and averaging it in
+    pulls the measured effect toward zero for a reason unrelated to H1.
+
+    Adapting Person 2's `RetrievalResult` to this is one line, done at the edge
+    where the real retriever is wired in -- never here, so this module does not
+    import `context/` (architecture rule 1):
+
+        Retrieved(
+            chunks=[c.to_contract() for c in result.chunks],
+            fell_back_to_flat=result.fell_back_to_flat,
+            query_category=result.query_category and result.query_category.value,
+        )
+
+    It lives here for now; its natural home is `core/schemas.py`, next to the
+    rest of C2. That file is Person 1's, so it is proposed to them (integration
+    step 10) and moving it later only changes an import.
+
+    Attributes:
+        chunks: sorted by similarity, descending (D9). May be empty (D8).
+        fell_back_to_flat: `True` only in the PARA arm, when the filtered search
+            found nothing and flat results were served instead. Always `False`
+            in the flat arm, which has nothing to fall back from.
+        query_category: the folder the classifier chose, as a plain string
+            (`"projects"`, ...). `None` in the flat arm, which does not classify.
+    """
+
+    chunks: list[Chunk]
+    fell_back_to_flat: bool = False
+    query_category: str | None = None
+
+
 #: Signature of what `context/` produces (Person 2), contract C2.
-RetrieveFn = Callable[[str, Strategy, int], list[Chunk]]
+RetrieveFn = Callable[[str, Strategy, int], Retrieved]
 
 #: Signature of what `agent/` produces, contract C3.
 AnswerFn = Callable[[str, list[Chunk]], Answer]
@@ -64,6 +103,24 @@ class Record:
             reported separately and do not enter the average unmarked: a
             truncated answer looks reasonable until you read it in full, and it
             contaminates the number silently.
+        fell_back_to_flat: copied from `Retrieved` (F4). The report prints the
+            fallback rate next to every PARA number: a high rate is a finding
+            about the classifier, not a verdict on PARA.
+        query_category: copied from `Retrieved`. `None` in the flat arm.
+        contexts: the **text** of the retrieved chunks, in retrieval order (D9).
+            What RAGAS scores as `retrieved_contexts` (integration step 7):
+            without it, context precision and recall have nothing to judge.
+            `n_chunks == len(contexts)` always. A tuple, not a list, so a frozen
+            row cannot have its contexts edited after the fact.
+
+            It holds email text. It lives in memory only: the report prints
+            counts and means, never rows, and nothing here writes rows to disk.
+            Whoever adds a dump of `Record`s someday has to treat it like the
+            corpus (D4).
+
+    The last three have defaults because they are exactly what a row with
+    nothing extra would carry, so the many `Record(...)` already written in
+    tests stay valid. `run()` always sets them explicitly.
     """
 
     question_id: str
@@ -73,6 +130,9 @@ class Record:
     n_chunks: int
     finish_reason: str
     flagged: bool
+    fell_back_to_flat: bool = False
+    query_category: str | None = None
+    contexts: tuple[str, ...] = ()
 
 
 def load_questions(path: Path) -> list[Question]:
@@ -141,9 +201,9 @@ def run(
 
     Args:
         questions: the set, in the order it is going to be run.
-        retrieve: the retrieval function (C2). It is received, not imported -- so
-            the tests can pass a toy one and the real `retrieve` drops in without
-            touching this.
+        retrieve: the retrieval function (C2), returning a `Retrieved`. It is
+            received, not imported -- so the tests can pass a toy one and the
+            real `retrieve` drops in without touching this.
         answer: the agent function (C3). It handles its own cache (D16), so this
             module knows nothing about hashes: if a run is interrupted, what was
             already answered is not paid for again.
@@ -176,16 +236,19 @@ def run(
 
     for question in questions:
         for strategy in STRATEGIES:
-            chunks = retrieve(question.q, strategy, k)
-            ans = answer(question.q, chunks)
+            retrieved = retrieve(question.q, strategy, k)
+            ans = answer(question.q, retrieved.chunks)
             record = Record(
                 question_id=question.id,
                 strategy=strategy,
                 text=ans.text,
                 confidence=ans.confidence,
-                n_chunks=len(chunks),
+                n_chunks=len(retrieved.chunks),
                 finish_reason=ans.finish_reason,
                 flagged=ans.finish_reason != "stop",
+                fell_back_to_flat=retrieved.fell_back_to_flat,
+                query_category=retrieved.query_category,
+                contexts=tuple(c.text for c in retrieved.chunks),
             )
             records.append(record)
 
