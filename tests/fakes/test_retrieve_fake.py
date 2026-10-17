@@ -10,6 +10,8 @@ of a retriever that lies in a different way from the one it was designed to.
 
 import pytest
 
+from selfware.context.domain import ParaFolder
+from selfware.eval.harness import Retrieved
 from tests.fakes.retrieve_fake import (
     CORPUS,
     PARA_PATHS,
@@ -18,12 +20,12 @@ from tests.fakes.retrieve_fake import (
     retrieve_fake,
 )
 
-#: Verified: its hash lands on `archive/2026`, the folder with no chunks. This is
-#: how the D8 case is provoked. If `PARA_PATHS` changes, this constant stops
-#: holding and has to be recomputed.
+#: Verified: its hash lands on `archive`, the folder with no chunks. This is how
+#: the fallback case is provoked. If `PARA_PATHS` changes length or order, this
+#: constant stops holding and has to be recomputed.
 QUERY_EMPTY_FOLDER = "how much did I pay?"
 
-#: Verified: its hash lands on `resources/newsletters`, which does have chunks.
+#: Verified: its hash lands on `resources`, which does have chunks.
 QUERY_FULL_FOLDER = "which antivirus did I buy?"
 
 
@@ -35,8 +37,8 @@ def test_is_deterministic():
     our own or from chance -- and the D16 cache would serve answers that no longer
     correspond.
     """
-    a = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5)
-    b = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5)
+    a = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5).chunks
+    b = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5).chunks
     assert a == b
 
 
@@ -46,20 +48,20 @@ def test_comes_sorted_by_similarity_descending():
     `confidence.py` uses the `similarity` of the first chunk as its retrieval
     signal (D24). Without this order, that signal is noise.
     """
-    chunks = retrieve_fake(QUERY_FULL_FOLDER, "flat", 8)
+    chunks = retrieve_fake(QUERY_FULL_FOLDER, "flat", 8).chunks
     sims = [c.similarity for c in chunks]
     assert sims == sorted(sims, reverse=True)
 
 
 def test_retrieved_similarity_falls_in_zero_one():
     """D10: cosine in [0,1], higher = more relevant. It is not a distance."""
-    for c in retrieve_fake(QUERY_FULL_FOLDER, "flat", 8):
+    for c in retrieve_fake(QUERY_FULL_FOLDER, "flat", 8).chunks:
         assert 0.0 <= c.similarity <= 1.0
 
 
 def test_never_returns_more_than_k():
     for k in (1, 3, 5):
-        assert len(retrieve_fake(QUERY_FULL_FOLDER, "flat", k)) <= k
+        assert len(retrieve_fake(QUERY_FULL_FOLDER, "flat", k).chunks) <= k
 
 
 def test_the_flat_arm_never_comes_back_empty():
@@ -68,24 +70,48 @@ def test_the_flat_arm_never_comes_back_empty():
     It matters for reading the results: if `n_chunks=0` shows up in the flat arm
     of a run, the failure is not the PARA filter's.
     """
-    assert retrieve_fake(QUERY_EMPTY_FOLDER, "flat", 5) != []
-    assert retrieve_fake(QUERY_FULL_FOLDER, "flat", 5) != []
+    assert retrieve_fake(QUERY_EMPTY_FOLDER, "flat", 5).chunks != []
+    assert retrieve_fake(QUERY_FULL_FOLDER, "flat", 5).chunks != []
 
 
-def test_the_para_arm_can_come_back_empty():
-    """D8: the filter leaves the folder empty and `[]` is returned. No falling
-    back to flat.
+def test_an_empty_folder_falls_back_to_flat():
+    """Like Person 2's `retrieve()`: the filter finds nothing, flat results are
+    served, and the fallback is flagged so the report can count it (F4).
 
-    This is the test that gives the whole double its point. `agent/answer.py` has
-    to handle zero chunks without breaking, and `harness.py` has to count those
-    zeros: "PARA retrieves nothing in N% of cases" is a finding, not an error.
+    This replaces D8's empty list. It is the test that gives the double its point
+    now: "PARA fell back in N% of cases" is a finding, not an error.
     """
-    assert retrieve_fake(QUERY_EMPTY_FOLDER, "para", 5) == []
+    out = retrieve_fake(QUERY_EMPTY_FOLDER, "para", 5)
+
+    assert out.fell_back_to_flat is True
+    assert out.chunks != []
+
+
+def test_the_fallback_serves_exactly_the_flat_result():
+    """Same chunks, same order, same k: what flat would have returned."""
+    para = retrieve_fake(QUERY_EMPTY_FOLDER, "para", 3)
+    flat = retrieve_fake(QUERY_EMPTY_FOLDER, "flat", 3)
+
+    assert para.chunks == flat.chunks
+
+
+def test_the_fallback_keeps_the_chosen_folder():
+    """ "Classified as archive, found nothing, served flat" is the diagnostic case:
+    losing the category would hide which choice of the classifier failed."""
+    out = retrieve_fake(QUERY_EMPTY_FOLDER, "para", 5)
+
+    assert out.query_category == "archive"
+
+
+def test_a_folder_with_chunks_does_not_fall_back():
+    out = retrieve_fake(QUERY_FULL_FOLDER, "para", 5)
+
+    assert out.fell_back_to_flat is False
 
 
 def test_the_para_arm_brings_only_one_folder():
     """The filter really filters: everything returned is from the same folder."""
-    chunks = retrieve_fake(QUERY_FULL_FOLDER, "para", 8)
+    chunks = retrieve_fake(QUERY_FULL_FOLDER, "para", 8).chunks
     assert chunks, "this query should land on a folder that has chunks"
     assert len({c.para_path for c in chunks}) == 1
 
@@ -96,8 +122,8 @@ def test_the_two_arms_do_not_return_the_same():
     The harness compares two arms; a double that made them identical would
     produce a difference of zero and look like a result.
     """
-    flat = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5)
-    para = retrieve_fake(QUERY_FULL_FOLDER, "para", 5)
+    flat = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5).chunks
+    para = retrieve_fake(QUERY_FULL_FOLDER, "para", 5).chunks
     assert [c.item_id for c in flat] != [c.item_id for c in para]
 
 
@@ -108,20 +134,30 @@ def test_the_similarity_formula_is_pinned():
     similarities move and old runs stop being comparable with new ones -- in
     silence. This test turns that change into a noisy failure.
     """
-    flat = retrieve_fake(QUERY_FULL_FOLDER, "flat", 8)
+    flat = retrieve_fake(QUERY_FULL_FOLDER, "flat", 8).chunks
     by_id = {c.item_id: c.similarity for c in flat}
     assert by_id["itm-01"] == pytest.approx(0.0826673626434058)
     assert by_id["itm-06"] == pytest.approx(0.36267701303586364)
 
 
 def test_the_corpus_has_no_chunks_in_the_empty_folder():
-    """`archive/2026` is in `PARA_PATHS` and has no chunks. On purpose.
+    """`archive` is in `PARA_PATHS` and has no chunks. On purpose.
 
-    It is what makes the D8 case provokable without a special `if`, and it
+    It is what makes the fallback provokable without a special `if`, and it
     reproduces the shape of the real corpus: R7 measured 0 emails in `archive`.
     """
-    assert "archive/2026" in PARA_PATHS
-    assert not [c for c in CORPUS if c.para_path == "archive/2026"]
+    assert "archive" in PARA_PATHS
+    assert not [c for c in CORPUS if c.para_path == "archive"]
+
+
+def test_the_vocabulary_is_person_2s():
+    """E2/F2: the double speaks exactly `ParaFolder`'s values. If `context/`
+    changes its vocabulary, this goes red instead of the double drifting."""
+    assert set(PARA_PATHS) == {folder.value for folder in ParaFolder}
+
+
+def test_every_chunk_lives_in_a_known_folder():
+    assert {c.para_path for c in CORPUS} <= set(PARA_PATHS)
 
 
 # --------------------------------------------------------------------------
@@ -153,10 +189,28 @@ def test_similarity_changes_with_the_question():
 
 
 def test_target_folder_returns_the_pinned_folders():
-    assert _target_folder(QUERY_EMPTY_FOLDER) == "archive/2026"
-    assert _target_folder(QUERY_FULL_FOLDER) == "resources/newsletters"
+    assert _target_folder(QUERY_EMPTY_FOLDER) == "archive"
+    assert _target_folder(QUERY_FULL_FOLDER) == "resources"
 
 
 def test_target_folder_is_always_one_of_PARA_PATHS():
     for q in ("a", "b", "c", "d", "e", "f", "g", "h"):
         assert _target_folder(q) in PARA_PATHS
+
+
+def test_it_returns_a_retrieved():
+    """F4: the harness needs more than the chunks."""
+    assert isinstance(retrieve_fake(QUERY_FULL_FOLDER, "flat", 5), Retrieved)
+
+
+def test_the_flat_arm_has_no_category_and_no_fallback():
+    out = retrieve_fake(QUERY_FULL_FOLDER, "flat", 5)
+
+    assert out.query_category is None
+    assert out.fell_back_to_flat is False
+
+
+def test_the_para_arm_reports_the_target_folder():
+    out = retrieve_fake(QUERY_FULL_FOLDER, "para", 5)
+
+    assert out.query_category == _target_folder(QUERY_FULL_FOLDER)

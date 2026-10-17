@@ -11,7 +11,7 @@ and no budget spent (R6).
 
 **This is NOT official and produces no project results.** It is scaffolding to
 exercise the pipeline. Any number coming out of a run against this module is
-good for checking that rows are generated, that the D8 zeros are counted and
+good for checking that rows are generated, that the fallbacks are counted and
 that truncation is flagged -- **never for answering H1**. Real runs start the
 day Person 2's `retrieve()` arrives.
 
@@ -30,23 +30,30 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from selfware.core.schemas import Chunk
+from selfware.eval.harness import Retrieved
 
 Strategy = Literal["flat", "para"]
 
-#: The PARA folders the filter can choose from. **`archive/2026` is deliberate
-#: and holds not a single chunk in `CORPUS`.** That is how the D8 case is
-#: provoked: when the filter lands on that folder, the list comes back empty.
-#: There is no special `if` forcing it; it falls out of the same mechanism D8
-#: describes -- the filter leaves the folder with nothing -- exactly as it would
-#: with the real retriever.
+#: The PARA folders the filter can choose from: **exactly the values of Person
+#: 2's `ParaFolder`** (E2, F2), bare folder names with no subfolder, because that
+#: is what `Chunk.to_contract()` puts in `para_path`. A test pins this against
+#: `ParaFolder`, so the day `context/` changes its vocabulary the double finds
+#: out with a red test instead of drifting silently.
 #:
-#: The empty drawer is not a whim: R7 measured that the real inbox has 0 emails
-#: in `archive`. The double reproduces that shape.
+#: Same order as the old `projects/atlas`, `areas/finance`... paths, on purpose:
+#: `_target_folder` picks by index, so every question keeps landing on the same
+#: folder and the pinned test values only changed names.
+#:
+#: **`archive` is deliberate and holds not a single chunk in `CORPUS`.** That is
+#: how the empty-filter case is provoked, with no special `if`: the filter lands
+#: on that folder, finds nothing, and the double falls back to flat exactly as
+#: Person 2's `retrieve()` does. The empty drawer is not a whim: R7 measured that
+#: the real inbox has 0 emails in `archive`.
 PARA_PATHS: tuple[str, ...] = (
-    "projects/atlas",
-    "areas/finance",
-    "resources/newsletters",
-    "archive/2026",
+    "projects",
+    "areas",
+    "resources",
+    "archive",
 )
 
 #: Small fixed corpus. The text is deliberately synthetic: nobody should be able
@@ -55,56 +62,56 @@ CORPUS: tuple[Chunk, ...] = (
     Chunk(
         text="FAKE: project note about the September deliverable.",
         item_id="itm-01",
-        para_path="projects/atlas",
+        para_path="projects",
         ts=datetime(2026, 9, 1, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: minutes of the weekly project meeting.",
         item_id="itm-02",
-        para_path="projects/atlas",
+        para_path="projects",
         ts=datetime(2026, 9, 8, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: monthly receipt for a service, amount and reference number.",
         item_id="itm-03",
-        para_path="areas/finance",
+        para_path="areas",
         ts=datetime(2026, 7, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: next month's receipt, same service, different reference.",
         item_id="itm-04",
-        para_path="areas/finance",
+        para_path="areas",
         ts=datetime(2026, 8, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: subscription renewal notice.",
         item_id="itm-05",
-        para_path="areas/finance",
+        para_path="areas",
         ts=datetime(2026, 9, 9, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter, morning edition.",
         item_id="itm-06",
-        para_path="resources/newsletters",
+        para_path="resources",
         ts=datetime(2026, 9, 14, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter from the same day, another edition.",
         item_id="itm-07",
-        para_path="resources/newsletters",
+        para_path="resources",
         ts=datetime(2026, 9, 14, tzinfo=UTC),
         similarity=0.0,
     ),
     Chunk(
         text="FAKE: tech newsletter from the previous week.",
         item_id="itm-08",
-        para_path="resources/newsletters",
+        para_path="resources",
         ts=datetime(2026, 9, 7, tzinfo=UTC),
         similarity=0.0,
     ),
@@ -156,8 +163,8 @@ def _target_folder(query: str) -> str:
         query: the question, as is.
 
     Returns:
-        One of the `PARA_PATHS`. It can be `archive/2026`, which has no chunks:
-        that is where the D8 empty case comes from.
+        One of the `PARA_PATHS`. It can be `archive`, which has no chunks: that
+        is where the fallback case comes from.
     """
 
     raw = query.encode()
@@ -167,7 +174,7 @@ def _target_folder(query: str) -> str:
     return PARA_PATHS[index]
 
 
-def retrieve_fake(query: str, strategy: Strategy, k: int) -> list[Chunk]:
+def retrieve_fake(query: str, strategy: Strategy, k: int) -> Retrieved:
     """Fake retriever satisfying contract C2. Deterministic, no network.
 
     **It retrieves nothing semantically.** The similarities come from a hash, so
@@ -206,15 +213,26 @@ def retrieve_fake(query: str, strategy: Strategy, k: int) -> list[Chunk]:
             but that is guaranteed by the caller, not by this function.
 
     Returns:
-        Up to `k` chunks, **sorted by `similarity` descending** (D9), each with
+        A `Retrieved` (F4). Its `chunks` are up to `k` chunks, **sorted by
+        `similarity` descending** (D9), each with
         its `similarity` computed in [0,1) (D10). The `Chunk`s in `CORPUS` carry
         `similarity=0.0` because they are immutable and the real value depends on
         the query: copies with the similarity set have to be returned, not the
         originals.
 
-        **It can return an empty list**, and only in the PARA arm: when the
-        target folder is `archive/2026`, which has no chunks (D8). The `flat` arm
-        never comes back empty as long as `CORPUS` holds something.
+        **It falls back to flat, like Person 2's `retrieve()`.** When the PARA
+        filter finds nothing -- the target folder is `archive`, which has no
+        chunks -- it returns exactly what the flat arm would return for the same
+        query and `k`, with `fell_back_to_flat=True`. `query_category` keeps the
+        folder that was chosen: "classified as archive, found nothing, served
+        flat" is the diagnostic case the report counts (F4).
+
+        This replaces D8's empty list, which the real retriever never adopted.
+        So `n_chunks=0` no longer comes out of this double at all; with the real
+        system it means an empty index, not a PARA failure.
+
+        `query_category` is the target folder in the PARA arm and `None` in the
+        flat arm. `fell_back_to_flat` is always `False` in the flat arm.
 
     Hint for the body: it is four steps. Choose where you start from (the whole
     corpus or one folder), compute the similarity of each candidate, sort, cut at
@@ -241,4 +259,15 @@ def retrieve_fake(query: str, strategy: Strategy, k: int) -> list[Chunk]:
     while len(chunks) > k:
         chunks.pop()
 
-    return chunks
+    if strategy == "para" and not chunks:
+        result_flat = retrieve_fake(query=query, strategy="flat", k=k)
+        new_result = replace(
+            result_flat, fell_back_to_flat=True, query_category=folders[0]
+        )
+        return new_result
+
+    return Retrieved(
+        chunks=chunks,
+        fell_back_to_flat=False,
+        query_category=folders[0] if strategy == "para" else None,
+    )
