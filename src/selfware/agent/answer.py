@@ -32,7 +32,13 @@ from pathlib import Path
 
 from selfware.agent.cache import cache_key, load, save
 from selfware.agent.confidence import TokenLogprob, confidence
+from selfware.core.llm import MODEL_IDS, LLMResult, Tier, call_with_logprobs
 from selfware.core.schemas import Answer, Chunk
+
+#: Signature of `core.llm.call_with_logprobs`: `(tier, messages, **params)`.
+#: `make_answerer` receives one of these instead of building a client, so the
+#: tests pass a toy one and no budget is spent on testing.
+LLMCall = Callable[..., LLMResult]
 
 #: Fixed prompt prefix. It is a module constant on purpose: Nebius' prefix cache
 #: requires this text to be **byte-for-byte identical** between calls. If it were
@@ -154,15 +160,18 @@ def build_prompt(question: str, chunks: list[Chunk], profile: str | None = None)
 
 
 def to_token_logprobs(logprobs_content) -> list[TokenLogprob]:
-    """Convert what the SDK returns into the `TokenLogprob`s of `confidence.py`.
+    """Convert per-token logprobs into the `TokenLogprob`s of `confidence.py`.
 
-    The SDK hands over `response.choices[0].logprobs.content`: a list of objects
-    with `.token` and `.logprob`. This function moves them into our dataclass so
-    that `confidence.py` does not depend on the OpenAI SDK.
+    Accepts any sequence of objects with `.token` and `.logprob`: what
+    `core.llm.LLMResult.tokens` carries, and also the SDK's
+    `response.choices[0].logprobs.content`. Moving them into our dataclass keeps
+    `confidence.py` independent of both.
 
     Args:
-        logprobs_content: the list from the SDK, or `None` if the server returned
-            no logprobs.
+        logprobs_content: the token list, or `None` if the server returned no
+            logprobs. Note that `core.llm.call_with_logprobs` turns "no logprobs"
+            into an **empty list** without complaining, so the empty case is
+            the one that actually arrives here.
 
     Returns:
         The same sequence, in our type, in the same order. The order matters:
@@ -189,32 +198,47 @@ def to_token_logprobs(logprobs_content) -> list[TokenLogprob]:
 
 
 def make_answerer(
-    client,
-    model: str,
     cache_dir: Path,
+    *,
+    tier: Tier = "ultra",
+    llm_call: LLMCall = call_with_logprobs,
     profile: str | None = None,
     temperature: float = 0.0,
     max_tokens: int = 4000,
 ) -> Callable[[str, list[Chunk]], Answer]:
     """Return the `answer` function the harness consumes.
 
-    Answering for real needs the client, the model, the cache folder and the
-    sampling parameters. But the harness expects a two-argument function
-    (`AnswerFn`). This factory receives everything else **once** and returns a
-    function matching that contract:
+    Answering for real needs the model tier, the cache folder and the sampling
+    parameters. But the harness expects a two-argument function (`AnswerFn`).
+    This factory receives everything else **once** and returns a function
+    matching that contract:
 
-        answerer = make_answerer(client, MODEL, Path(".cache"))
+        answerer = make_answerer(Path(".cache"))
         records = run(questions, retrieve_fake, answerer, k=5)
 
     It is the same pattern as `answer_simple()` in the harness tests: a function
     that returns another function.
 
+    Every call to Token Factory goes through `core/llm.py` (architecture rule
+    2): this module never builds a client nor names the API URL. Going through
+    `call_with_logprobs` is also what fills `Answer.tier_calls`, which is what
+    `/cost` and the ledger read.
+
+    Everything after `cache_dir` is keyword-only on purpose. The old signature
+    was `make_answerer(client, model, cache_dir)`; a caller still written that
+    way now fails loudly with a `TypeError` instead of silently passing a
+    client where a path should go.
+
     Args:
-        client: OpenAI SDK client pointed at Token Factory. It is **received**,
-            not built here, so the tests can pass a toy one and no budget is
-            spent on testing.
-        model: e.g. `nvidia/Nemotron-3-Ultra-550b-a55b` (D5).
         cache_dir: on-disk cache folder (D16).
+        tier: which model answers, as a `core.llm` tier. `"ultra"` by D5. The
+            cache key uses the full model id, `MODEL_IDS[tier]`, not the tier
+            name: that is the string the cache was keyed with before this
+            module went through `core/llm.py`, so the entries already on disk
+            stay valid.
+        llm_call: the function that talks to Token Factory. Defaults to
+            `core.llm.call_with_logprobs`. It is **received** so the tests can
+            pass a toy one and no budget is spent on testing.
         profile: context about the mailbox owner (C5), constant during the run.
         temperature: **always 0 in the harness** (D7). Without determinism there
             is no way to tell whether a change in the number came from a change
@@ -233,14 +257,20 @@ def make_answerer(
            from, and by D8 this case can be frequent in the PARA arm: paying for
            those calls would be paying to fail.
         2. Builds the prompt with `build_prompt`.
-        3. Computes the key with `cache_key(prompt, model, params)` and checks
-           the cache.
-        4. If there is nothing cached, calls the model with `logprobs=True` and
-           `top_logprobs=5`, and stores the result.
+        3. Computes the key with `cache_key(prompt, MODEL_IDS[tier], params)`
+           and checks the cache.
+        4. If there is nothing cached, calls `llm_call(tier, messages, **params)`
+           -- the **same** `params` dict that went into the key, so what is sent
+           and what is cached can never drift apart -- and stores the result.
         5. Computes `confidence(tokens, chunks)` and assembles the `Answer`.
 
         `used_web` is always `False` here: Tavily is used *after* abstaining, and
         that is decided by `abstain.py` (D13).
+
+        `tier_calls` holds the call's `TierCall` when the model was actually
+        called, and is **empty** on a cache hit or with no chunks. That is the
+        honest record: a cache hit cost nothing, and reporting the original
+        call again would make `/cost` count the same spend twice.
 
     What goes into the cache: the text, the `finish_reason` and the tokens with
     their logprobs -- **not the already-computed `confidence`**. The reason is
@@ -271,23 +301,16 @@ def make_answerer(
             "logprobs": True,
             "top_logprobs": 5,
         }
-        key = cache_key(prompt, model, params)
+        key = cache_key(prompt, MODEL_IDS[tier], params)
         cached = load(cache_dir, key)
 
         if cached is None:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                logprobs=True,
-                top_logprobs=5,
-            )
-            choice = response.choices[0]
-
-            text = choice.message.content
-            finish_reason = choice.finish_reason
-            tokens = to_token_logprobs(choice.logprobs.content)
+            messages = [{"role": "user", "content": prompt}]
+            result = llm_call(tier, messages, **params)
+            text = result.text
+            finish_reason = result.finish_reason
+            tokens = to_token_logprobs(result.tokens)
+            tier_calls = [result.tier_call]
 
             save(
                 cache_dir,
@@ -307,6 +330,7 @@ def make_answerer(
                 TokenLogprob(token=d["token"], logprob=d["logprob"])
                 for d in cached["tokens"]
             ]
+            tier_calls = []
 
         if ABSTENTION_SENTINEL in text:
             return Answer(
@@ -315,6 +339,7 @@ def make_answerer(
                 provenance=chunks,
                 used_web=False,
                 finish_reason=finish_reason,
+                tier_calls=tier_calls,
             )
 
         return Answer(
@@ -323,6 +348,7 @@ def make_answerer(
             provenance=chunks,
             used_web=False,
             finish_reason=finish_reason,
+            tier_calls=tier_calls,
         )
 
     return _answer
