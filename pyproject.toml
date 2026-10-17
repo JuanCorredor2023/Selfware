@@ -25,6 +25,19 @@ dependencies = [
     # observability/
     "opentelemetry-api",
     "opentelemetry-sdk",
+    # eval/ (Person 3). Read before upgrading any of these four: they hold each
+    # other up (D30, re-measured on Python 3.14 on 4 Oct; see docs/integration_p3.md, D2).
+    # ragas: 0.3.1 exactly. From 0.3.9 it depends on `instructor`, which caps
+    #   `openai` far below the 3.x SDK `core/llm.py` is built on.
+    "ragas==0.3.1",
+    # langchain-community: ragas 0.3.1 imports
+    #   `langchain_community.chat_models.vertexai`, which 0.4 removed. The resolver
+    #   will NOT stop an upgrade: the break only shows at import time.
+    "langchain-community<0.4",
+    # pillow: ragas 0.3.1 imports PIL without declaring it.
+    "pillow>=12.3.0",
+    # scipy: Wilcoxon signed-rank test for the paired design (D18).
+    "scipy>=1.18.1",
 ]
 
 [project.scripts]
