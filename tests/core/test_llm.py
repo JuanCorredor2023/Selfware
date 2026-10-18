@@ -125,3 +125,31 @@ def test_unknown_tier_is_rejected(monkeypatch):
     with_fake_client(monkeypatch, make_response())
     with pytest.raises(KeyError):
         llm.call("does-not-exist", MESSAGES)
+
+
+def test_embed_uses_the_embedder_model_and_returns_ordered_vectors(monkeypatch):
+    resp = SimpleNamespace(
+        data=[
+            SimpleNamespace(index=1, embedding=[0.2]),
+            SimpleNamespace(index=0, embedding=[0.1]),
+        ],
+        usage=SimpleNamespace(prompt_tokens=7, total_tokens=7),
+    )
+
+    class _Embeddings:
+        def create(self, **request):
+            self.request = request
+            return resp
+
+    class _Client:
+        embeddings = _Embeddings()
+
+    client = _Client()
+    monkeypatch.setattr(llm, "_get_client", lambda: client)
+
+    vectors, tier_call = llm.embed(["a", "b"])
+
+    assert client.embeddings.request["model"] == llm.MODEL_IDS["embedder"]
+    assert vectors == [[0.1], [0.2]]
+    assert tier_call.model == llm.MODEL_IDS["embedder"]
+    assert tier_call.tokens_out == 0

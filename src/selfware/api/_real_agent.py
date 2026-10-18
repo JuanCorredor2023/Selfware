@@ -1,0 +1,50 @@
+"""
+api/_real_agent.py -- Person 4.
+
+Builds the real `answer_question(query, strategy)` for `/ask`, following the
+paste in docs/integration_p3.md (G5): `agent/` never imports `context/`
+(architecture rule 1), so the API is where the real retriever is built and
+injected into `agent.ask.make_answer_question`.
+
+Only imported when SELFWARE_AGENT=real, so the mock-only setup (and CI) does
+not need chromadb or a Token Factory key.
+
+Environment:
+    SELFWARE_CHROMA_PATH   folder of the Chroma store (default "chroma_data")
+    SELFWARE_CACHE_DIR     folder of the answer cache (default ".cache")
+    SELFWARE_PARA_CATEGORY PARA folder the query classifier returns
+                           (default "projects")
+
+KNOWN LIMIT (integration_p3.md F1): context/classifier.py is a constant stub,
+so the PARA arm always filters on SELFWARE_PARA_CATEGORY, whatever the
+question says. The flat arm is not affected.
+"""
+
+import os
+from collections.abc import Callable
+from pathlib import Path
+
+from selfware.agent.answer import make_answerer
+from selfware.agent.ask import make_answer_question
+from selfware.context.classifier import Classifier
+from selfware.context.domain import ParaFolder, Strategy
+from selfware.context.embedder import Embedder
+from selfware.context.retrieve import Retrieve
+from selfware.context.store import ChromaStore
+from selfware.core.schemas import Answer
+
+
+def build_answer_question() -> Callable[[str, str], Answer]:
+    """The Retrieve object is built ONCE per process (F3), not per question."""
+    store = ChromaStore(
+        Embedder(), path=os.environ.get("SELFWARE_CHROMA_PATH", "chroma_data")
+    )
+    category = ParaFolder(os.environ.get("SELFWARE_PARA_CATEGORY", "projects"))
+    retriever = Retrieve(store, Classifier(category))
+
+    return make_answer_question(
+        retrieve=lambda q, s, k: [
+            c.to_contract() for c in retriever.retrieve(q, Strategy(s), k).chunks
+        ],
+        answer=make_answerer(Path(os.environ.get("SELFWARE_CACHE_DIR", ".cache"))),
+    )

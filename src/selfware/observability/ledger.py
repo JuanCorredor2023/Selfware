@@ -26,6 +26,7 @@ TIER_LABEL = {
     "super": "Nemotron Super",
     "ultra": "Nemotron Ultra",
     "judge": "Qwen3 judge",
+    "embedder": "Qwen3 embedder",
     "other": "Other",
 }
 

@@ -178,7 +178,7 @@ def embed(texts: list[str], **kwargs):
     """
 
     client = _get_client()
-    model  = MODEL_IDS["embedding"]
+    model  = MODEL_IDS["embedder"]
 
     start = time.perf_counter()
     response = client.embeddings.create(model=model, input=texts, **kwargs)

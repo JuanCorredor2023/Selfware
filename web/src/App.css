@@ -342,6 +342,7 @@
 .tierbar__seg--super { background: var(--color-accent-text); }
 .tierbar__seg--nano { background: var(--color-muted); }
 .tierbar__seg--judge { background: var(--color-border-strong); }
+.tierbar__seg--embedder { background: var(--color-border); }
 .tierbar__seg--other { background: var(--color-overlay); }
 .tierlegend { display: grid; gap: 4px; margin-top: var(--space-sm); }
 .tierlegend__row { display: flex; align-items: center; gap: var(--space-sm); font-size: 13px; }
