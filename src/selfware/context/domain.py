@@ -55,7 +55,7 @@ class Document:
     source_id: str
     source: str
     content: str
-    category: str
+    category: str | None
     date: str
 
 
