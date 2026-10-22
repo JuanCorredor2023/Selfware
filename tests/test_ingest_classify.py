@@ -41,16 +41,16 @@ def test_documento_con_categoria_queda_intacto():
 
 def test_solo_clasifica_los_pendientes():
     docs = [
-        make_doc("m1", None),      # pendiente
-        make_doc("m2", "areas"),   # ya tiene
-        make_doc("m3", None),      # pendiente
+        make_doc("m1", None),  # pendiente
+        make_doc("m2", "areas"),  # ya tiene
+        make_doc("m3", None),  # pendiente
     ]
     clf = CountingFakeClassifier(ParaFolder.RESOURCES)
     classify_documents(docs, clf)
     # solo 2 llamadas (m1 y m3), no 3 -- m2 se saltó
     assert clf.document_calls == 2
     assert docs[0].category == "resources"
-    assert docs[1].category == "areas"   # intacto
+    assert docs[1].category == "areas"  # intacto
     assert docs[2].category == "resources"
 
 
