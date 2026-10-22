@@ -13,7 +13,7 @@ Comportamientos:
 
 import pytest
 
-from selfware.context.classifier import Classifier
+from selfware.context.classifier import FakeClassifier
 from selfware.context.domain import Chunk, ParaFolder, Strategy
 from selfware.context.retrieve import Retrieve
 
@@ -44,7 +44,7 @@ def chunk():
 
 def make_retriever(flat_result, filtered_result, classifier_category):
     store = FakeStore(flat_result, filtered_result)
-    classifier = Classifier(classifier_category)
+    classifier = FakeClassifier(classifier_category)
     return Retrieve(store, classifier), store
 
 
