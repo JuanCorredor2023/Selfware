@@ -40,7 +40,6 @@ _DOCUMENT_TIER = "nano"
 
 
 class Classifier:
-
     def classify_query(self, query: str) -> ParaFolder:
         return self._classify(query, _QUERY_PROMPT, _QUERY_TIER)
 

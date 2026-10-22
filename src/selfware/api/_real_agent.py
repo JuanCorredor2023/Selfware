@@ -12,12 +12,10 @@ not need chromadb or a Token Factory key.
 Environment:
     SELFWARE_CHROMA_PATH   folder of the Chroma store (default "chroma_data")
     SELFWARE_CACHE_DIR     folder of the answer cache (default ".cache")
-    SELFWARE_PARA_CATEGORY PARA folder the query classifier returns
-                           (default "projects")
 
-KNOWN LIMIT (integration_p3.md F1): context/classifier.py is a constant stub,
-so the PARA arm always filters on SELFWARE_PARA_CATEGORY, whatever the
-question says. The flat arm is not affected.
+The PARA arm classifies each question with the real context.classifier
+(Nemotron Super, integration_p3.md F1). That call goes through core.llm.call
+but the classifier discards its TierCall, so its cost does not reach /cost yet.
 """
 
 import os
@@ -27,7 +25,7 @@ from pathlib import Path
 from selfware.agent.answer import make_answerer
 from selfware.agent.ask import make_answer_question
 from selfware.context.classifier import Classifier
-from selfware.context.domain import ParaFolder, Strategy
+from selfware.context.domain import Strategy
 from selfware.context.embedder import Embedder
 from selfware.context.retrieve import Retrieve
 from selfware.context.store import ChromaStore
@@ -39,8 +37,7 @@ def build_answer_question() -> Callable[[str, str], Answer]:
     store = ChromaStore(
         Embedder(), path=os.environ.get("SELFWARE_CHROMA_PATH", "chroma_data")
     )
-    category = ParaFolder(os.environ.get("SELFWARE_PARA_CATEGORY", "projects"))
-    retriever = Retrieve(store, Classifier(category))
+    retriever = Retrieve(store, Classifier())
 
     return make_answer_question(
         retrieve=lambda q, s, k: [
