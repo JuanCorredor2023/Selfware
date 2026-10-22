@@ -1,5 +1,8 @@
+from collections.abc import Callable
+
 from selfware.context.domain import ParaFolder
 from selfware.core.llm import call
+from selfware.core.schemas import TierCall
 
 # Categoría por defecto cuando la respuesta del LLM no mapea a ninguna.
 _DEFAULT_CATEGORY = ParaFolder.RESOURCES
@@ -40,6 +43,11 @@ _DOCUMENT_TIER = "nano"
 
 
 class Classifier:
+    def __init__(self, on_tier_call: Callable[[TierCall], None] | None = None):
+        # Called with the TierCall of every LLM call, so the caller (api/) can
+        # price it and show it in /cost. None keeps the old behaviour.
+        self._on_tier_call = on_tier_call
+
     def classify_query(self, query: str) -> ParaFolder:
         return self._classify(query, _QUERY_PROMPT, _QUERY_TIER)
 
@@ -51,7 +59,9 @@ class Classifier:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": text},
         ]
-        response, _ = call(tier, messages, temperature=0, max_tokens=4)
+        response, tier_call = call(tier, messages, temperature=0, max_tokens=4)
+        if self._on_tier_call is not None:
+            self._on_tier_call(tier_call)
         return self._parse_to_para_folder(response)
 
     def _parse_to_para_folder(self, text: str) -> ParaFolder:

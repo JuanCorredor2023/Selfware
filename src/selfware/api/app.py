@@ -13,13 +13,14 @@ Still missing: /provenance (its data already travels inside /ask).
 
 import os
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from selfware.api import _mock_agent
+from selfware.api._calls import track_extra_calls
 from selfware.api._mock_para import get_category, get_tree
 from selfware.core.schemas import Answer
 from selfware.observability.cost import with_cost
@@ -68,7 +69,10 @@ def ask(q: str, strategy: Literal["flat", "para"] = "para") -> dict:
     span -- today with simulated data (see api/_mock_agent.py), but the
     wiring is real: the day the real agent replaces the mock, this keeps
     working untouched."""
-    answer = answer_question(q, strategy)
+    with track_extra_calls() as extra_calls:
+        answer = answer_question(q, strategy)
+    if extra_calls:
+        answer = replace(answer, tier_calls=[*answer.tier_calls, *extra_calls])
     for tier_call in answer.tier_calls:
         with_cost(tier_call)
         record_tier_call(tier_call)

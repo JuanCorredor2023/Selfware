@@ -14,8 +14,8 @@ Environment:
     SELFWARE_CACHE_DIR     folder of the answer cache (default ".cache")
 
 The PARA arm classifies each question with the real context.classifier
-(Nemotron Super, integration_p3.md F1). That call goes through core.llm.call
-but the classifier discards its TierCall, so its cost does not reach /cost yet.
+(Nemotron Super, integration_p3.md F1). Its TierCall is handed to
+api/_calls.py, so /ask prices it and /cost counts it.
 """
 
 import os
@@ -24,6 +24,7 @@ from pathlib import Path
 
 from selfware.agent.answer import make_answerer
 from selfware.agent.ask import make_answer_question
+from selfware.api._calls import note_tier_call
 from selfware.context.classifier import Classifier
 from selfware.context.domain import Strategy
 from selfware.context.embedder import Embedder
@@ -37,7 +38,7 @@ def build_answer_question() -> Callable[[str, str], Answer]:
     store = ChromaStore(
         Embedder(), path=os.environ.get("SELFWARE_CHROMA_PATH", "chroma_data")
     )
-    retriever = Retrieve(store, Classifier())
+    retriever = Retrieve(store, Classifier(on_tier_call=note_tier_call))
 
     return make_answer_question(
         retrieve=lambda q, s, k: [
