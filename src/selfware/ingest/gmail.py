@@ -40,79 +40,98 @@ def get_credentials():
 def get_all_messages(service):
     ids = []
     page_token = None
+    next_start_id = (
+        service.users().getProfile(userId="me").execute(num_retries=3).get("historyId")
+    )
     while True:
         result = (
-            service.users().messages().list(userId="me", pageToken=page_token).execute()
+            service.users()
+            .messages()
+            .list(userId="me", pageToken=page_token)
+            .execute(num_retries=3)
         )
         ids.extend(m["id"] for m in result.get("messages", []))
         page_token = result.get("nextPageToken")
         if not page_token:
-            next_start_id = service.users().getProfile(userId="me").execute()["historyId"]
             return list(dict.fromkeys(ids)), next_start_id
+
 
 def get_added_messages(service, start_history_id):
     ids = []
     page_token = None
-    while True: 
+    while True:
         new_messages = (
-            service.users().history().list(userId="me", 
-                                        startHistoryId=start_history_id, 
-                                        historyTypes=["messageAdded"], 
-                                        pageToke=page_token)
-                                        .execute()
+            service.users()
+            .history()
+            .list(
+                userId="me",
+                startHistoryId=start_history_id,
+                historyTypes=["messageAdded"],
+                pageToken=page_token,
+            )
+            .execute(num_retries=3)
         )
 
         for record in new_messages.get("history", []):
             for msg in record.get("messagesAdded", []):
                 msg_id = msg["message"]["id"]
                 ids.append(msg_id)
-        page_token = new_messages.get("nextPageToken") 
+        page_token = new_messages.get("nextPageToken")
         if not page_token:
-            next_start_id = service.users().getProfile(userId="me").execute()["historyId"]
+            next_start_id = (
+                service.users()
+                .getProfile(userId="me")
+                .execute(num_retries=3)
+                .get("historyId")
+            )
             return list(dict.fromkeys(ids)), next_start_id
+
 
 def get_messages(service, last_history_id=None):
     if last_history_id:
-        try: 
+        try:
             return get_added_messages(service, last_history_id)
         except HttpError as e:
             if e.resp.status == 404:
-                print("Identifier \'last_history_id\' has expired")
+                print("Identifier 'last_history_id' has expired")
     else:
         return get_all_messages(service)
 
-           
 
-def fetch_message(service, msg_id):
-    msg = service.users().messages().get(userId="me", id=msg_id, format="full").execute()
+def find_message_by_id(service, msg_id):
+    msg = (
+        service.users()
+        .messages()
+        .get(userId="me", id=msg_id, format="full")
+        .execute(num_retries=3)
+    )
     ts = datetime.datetime.fromtimestamp(
         int(msg["internalDate"]) / 1000, tz=datetime.UTC
     )
-    return ContextItem(id=msg["id"], 
-                       source="gmail", 
-                       text=extract_body(msg["payload"]), 
-                       ts=ts.isoformat())
+    return ContextItem(
+        id=msg["id"],
+        source="gmail",
+        text=extract_body(msg["payload"]),
+        ts=ts.isoformat(),
+    )
 
-def call_ingest():
+
+def call_ingest(last_history_id=None):
     creds = get_credentials()
 
     try:
         service = build("gmail", "v1", credentials=creds)
-        message_ids, nextHistoryId = get_messages(service)
+        message_ids, nextHistoryId = get_messages(service, last_history_id)
         print(f"Fetching {len(message_ids)} messages...")
 
         messages = []
         for message_id in message_ids:
             try:
-                messages.append(fetch_message(service, message_id))
+                messages.append(find_message_by_id(service, message_id))
             except HttpError as error:
                 print(f"Skipping message {message_id}: {error}")
-        return message_ids, nextHistoryId
+        return messages, nextHistoryId
 
     except HttpError as error:
         print(f"Failed to retrieve messages: {error}")
         return
-
-    # with open(output_file, "w", encoding="utf-8") as file:
-    #     json.dump(messages, file, indent=2, ensure_ascii=False)
-    # print(f"Wrote {len(messages)} messages to {output_file}")

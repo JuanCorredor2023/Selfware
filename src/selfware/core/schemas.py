@@ -26,6 +26,7 @@ class ContextItem(BaseModel):
     id: str
     source: Literal["gmail"]  # more sources will come later
     text: str
+    category: str
     ts: datetime
 
 
