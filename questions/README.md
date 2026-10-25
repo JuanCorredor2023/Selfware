@@ -55,6 +55,11 @@ uv run python -m scripts.run_eval --retrieval-only \
 
 - `evidence` is the email's path, which is also its id in the index, so hit@k and MRR
   can check whether an arm retrieved it.
+- `evidence_alt` (17 questions, 27 emails) lists the **other** emails that also answer
+  the question: a reminder, a reply quoting the original, a later confirmation. In a
+  real mailbox the answer often lives in more than one email, so retrieving any of them
+  is a correct retrieval; hit@k and MRR accept the evidence or any alternate. Each
+  alternate was read and checked to contain the answer.
 - `category` is the PARA folder of the **evidence email**, from the owner's folder
   (D20.5), in plural as `ParaFolder` emits it.
 - Unanswerable questions have `expected`, `category`, `evidence` and `hops` set to
@@ -67,7 +72,9 @@ uv run python -m scripts.run_eval --retrieval-only \
   the email, then write the question from the fact only, as the mailbox owner would ask
   it. Median Jaccard overlap between question and email: 0.057–0.073 per category.
 - One hop, absolute time anchors (D20). No summaries, opinions or counting.
-- Unique evidence: `evidence_quote` appears in at most 3 emails. Facts copied into
+- Unique quote: `evidence_quote` appears in at most 3 emails. Facts repeated by a few
+  emails are kept and listed in `evidence_alt`; facts repeated everywhere (newsletters,
+  mass announcements) were dropped, because any chunk would match them. Facts copied into
   emails of other folders were dropped, so the flat arm does not find copies that the
   filter would hide.
 - `hard_case: true` (26): a sibling email from the same thread or series could pull
@@ -89,6 +96,12 @@ uv run python -m scripts.run_eval --retrieval-only \
    category gets the same statistical power.
 
 ## History
+
+- 2026-10-25: an AI pre-review (triage) of all 200 against their evidence emails, checked
+  against a human sample of 10 (same verdict on all 10). 27 rewritten to one fact each
+  (field `revised`), 67 expected answers trimmed to what the question asks, 35 more
+  `hard_case`, and `evidence_alt` added to the 17 whose answer is repeated by other
+  emails. This is not a human verification: `source` stays `ai-drafted`.
 
 - 2026-10-25: first 150 + 15 (ids `...001`–`...050`, `en-x?01`–`05`).
 - 2026-10-25: +50 + 10 to reach 200 + 25 (ids `...051`–`...067`, `en-x?06`–`09`),
