@@ -36,6 +36,19 @@ Both variables are optional. Copy `.env.example` to `.env.local` to set them.
 The API only allows the origins listed in `src/selfware/api/app.py` (CORS). Update that list
 when the dashboard gets a public URL.
 
+### Backend modes
+
+The API answers from a mock unless told otherwise (no keys, no credits):
+
+```bash
+# real agent + retrieval + Token Factory (needs NEBIUS_API_KEY and an indexed Chroma folder)
+SELFWARE_AGENT=real SELFWARE_CHROMA_PATH=chroma_data \
+  uv run uvicorn selfware.api.app:app
+```
+
+`uv run python -m scripts.index_emails --demo` shows what indexing a dozen invented emails
+would cost; add `--yes` to actually do it. The PARA tree on the dashboard is still mock data.
+
 ## Layout of `src/`
 
 | Path | What lives there |
