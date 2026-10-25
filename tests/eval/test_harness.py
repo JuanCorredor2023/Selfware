@@ -397,3 +397,29 @@ def test_no_chunks_means_no_contexts():
     rows = run([question("q1")], retrieve_that_always_brings(0), answer_simple())
 
     assert all(r.contexts == () for r in rows)
+
+
+def test_the_chunk_item_ids_travel_to_the_row_in_order():
+    def _retrieve(query, strategy, k):
+        return Retrieved(
+            chunks=[
+                Chunk("a", "mail-1", "areas", datetime(2026, 1, 1, tzinfo=UTC), 0.9),
+                Chunk("b", "mail-2", "areas", datetime(2026, 1, 1, tzinfo=UTC), 0.8),
+            ]
+        )
+
+    records = run([question("q1")], _retrieve, answer_simple())
+    assert all(r.item_ids == ("mail-1", "mail-2") for r in records)
+
+
+def test_an_answer_that_raises_is_a_flagged_row_not_a_crash():
+    def _answer(query, chunks):
+        raise RuntimeError("malformed response")
+
+    records = run(
+        [question("q1"), question("q2")], retrieve_that_always_brings(2), _answer
+    )
+    assert len(records) == 4
+    assert all(r.flagged for r in records)
+    assert all(r.finish_reason == "error:RuntimeError" for r in records)
+    assert all(r.n_chunks == 2 and r.text == "" for r in records)
