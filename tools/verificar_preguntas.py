@@ -21,7 +21,11 @@ Per question:
    arms.
 5. **Category is the folder's (D20.5).** The question's `category` is the one
    the corpus gave the evidence message.
-6. **Unanswerable really is (D21).** For `answerable: false`, no message
+6. **Alternate evidence exists.** `evidence_alt`, when present, is a list of
+   other corpus ids that also answer the question (a reminder, a quoting reply):
+   in a real mailbox the answer is often in more than one email. They must
+   exist and differ from `evidence`.
+7. **Unanswerable really is (D21).** For `answerable: false`, no message
    contains every string in `probe` (the literal words the answer would need).
 
 It also prints the lexical overlap of D27: Jaccard over content words between
@@ -121,6 +125,15 @@ def check(question: dict, corpus: dict[str, dict], texts: list[str]) -> list[str
     copies = sum(quote in t for t in texts)
     if copies > MAX_COPIES:
         problems.append(f"evidence_quote appears in {copies} messages (> {MAX_COPIES})")
+    alts = question.get("evidence_alt", [])
+    if not isinstance(alts, list) or not all(isinstance(a, str) for a in alts):
+        problems.append("evidence_alt must be a list of corpus ids")
+    else:
+        missing = [a for a in alts if a not in corpus]
+        if missing:
+            problems.append(f"evidence_alt not in the corpus: {missing}")
+        if question["evidence"] in alts or len(set(alts)) != len(alts):
+            problems.append("evidence_alt repeats an id")
     if doc.get("category") and doc["category"] != question["category"]:
         problems.append(
             f"category {question['category']!r} but the evidence folder is "

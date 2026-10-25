@@ -43,6 +43,7 @@ gitignored, so a fake report can never be committed by accident.
 """
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -53,8 +54,9 @@ from selfware.eval.harness import Record, Retrieved, load_questions
 from selfware.eval.harness import run as run_harness
 from selfware.eval.pipeline import ScoreFn, evaluate, render_report
 from selfware.eval.retrieval_metrics import (
+    Accepted,
     hit_at_k,
-    reciprocal_rank,
+    make_reciprocal_rank,
     render_routing,
     routing_table,
 )
@@ -109,6 +111,20 @@ def load_all(paths: list[Path]) -> list[Question]:
             seen[q.id] = path
             questions.append(q)
     return questions
+
+
+def load_accepted(paths: list[Path]) -> Accepted:
+    """`id -> evidence_alt` from the question files: the other emails that also
+    answer a question (see `retrieval_metrics`). `Question` has no field for it
+    (contract C6 lives in Person 1's `core/schemas.py`), so it is read here."""
+    accepted: Accepted = {}
+    for path in paths:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                row = json.loads(line)
+                if row.get("evidence_alt"):
+                    accepted[row["id"]] = frozenset(row["evidence_alt"])
+    return accepted
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -310,11 +326,12 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
     tally = Tally()
     tally.wrap(classifier_module, "call")
     tally.wrap(embedder_module, "embed")
+    accepted = load_accepted(args.questions)
     oracle = OracleClassifier(questions) if args.oracle else None
     retrieve = make_real_retrieve(args.chroma, oracle)
     metrics: dict[str, ScoreFn] = {
-        f"hit@{args.k}": hit_at_k(args.k),
-        "mrr": reciprocal_rank,
+        f"hit@{args.k}": hit_at_k(args.k, accepted),
+        "mrr": make_reciprocal_rank(accepted),
     }
 
     if args.retrieval_only:

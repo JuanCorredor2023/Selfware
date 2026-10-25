@@ -258,3 +258,11 @@ def test_oracle_needs_a_real_mode(question_files):
                 str(question_files[0]),
             ]
         )
+
+
+def test_load_accepted_reads_evidence_alt(tmp_path):
+    from scripts.run_eval import load_accepted
+
+    row = answerable("q1", "areas") | {"evidence_alt": ["mail-2", "mail-3"]}
+    path = write_jsonl(tmp_path / "q.jsonl", [row, answerable("q2", "areas")])
+    assert load_accepted([path]) == {"q1": frozenset({"mail-2", "mail-3"})}

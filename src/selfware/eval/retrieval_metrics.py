@@ -14,6 +14,14 @@ retrieved text was.
 
 Both return a `ScoreFn`, so they plug into `pipeline.evaluate` like RAGAS does.
 
+**Several accepted emails per question.** In a real mailbox the answer often
+lives in more than one email: the original, a reminder, a reply quoting it. If
+only `evidence` counted, an arm that brought back the reminder would score a
+miss for a correct retrieval. `accepted` maps a question id to its other valid
+emails (the `evidence_alt` field of the question files); the evidence or any of
+them counts. `Question` (contract C6, Person 1's `core/schemas.py`) has no field
+for it, so the caller reads it from the JSONL and passes it in.
+
 `routing_table` is about the PARA arm's classifier, not about H1: per question
 category, how often the classifier chose the folder the evidence lives in. A
 PARA number next to a 40% routing rate is a finding about the classifier, not
@@ -28,39 +36,59 @@ from selfware.eval.harness import Record
 from selfware.eval.pipeline import ScoreFn
 from selfware.eval.report import Scores
 
-
-def _rank(question: Question, record: Record) -> int | None:
-    """1-based position of the evidence among the retrieved ids, or `None`."""
-    try:
-        return record.item_ids.index(question.evidence) + 1
-    except ValueError:
-        return None
+#: Question id -> the other emails that also answer it (`evidence_alt`).
+Accepted = dict[str, frozenset[str]]
 
 
-def _score_rows(questions: list[Question], records: list[Record], value) -> Scores:
+def _rank(question: Question, record: Record, accepted: Accepted) -> int | None:
+    """1-based position of the first accepted email among the retrieved ids
+    (the evidence or any of its alternates), or `None`."""
+    valid = {question.evidence} | accepted.get(question.id, frozenset())
+    for position, item_id in enumerate(record.item_ids, start=1):
+        if item_id in valid:
+            return position
+    return None
+
+
+def _score_rows(
+    questions: list[Question], records: list[Record], value, accepted: Accepted
+) -> Scores:
     by_id = {q.id: q for q in questions}
     scores: Scores = {}
     for r in records:
         q = by_id[r.question_id]
         if q.answerable and q.evidence:
-            scores[(r.question_id, r.strategy)] = value(_rank(q, r))
+            scores[(r.question_id, r.strategy)] = value(_rank(q, r, accepted))
     return scores
 
 
-def hit_at_k(k: int) -> ScoreFn:
-    """`ScoreFn`: 1.0 if the evidence is in the first `k` chunks, else 0.0."""
+def hit_at_k(k: int, accepted: Accepted | None = None) -> ScoreFn:
+    """`ScoreFn`: 1.0 if an accepted email is in the first `k` chunks, else 0.0."""
 
     def score(questions: list[Question], records: list[Record]) -> Scores:
         return _score_rows(
-            questions, records, lambda rank: float(rank is not None and rank <= k)
+            questions,
+            records,
+            lambda rank: float(rank is not None and rank <= k),
+            accepted or {},
         )
 
     return score
 
 
-def reciprocal_rank(questions: list[Question], records: list[Record]) -> Scores:
-    """`ScoreFn`: 1/rank of the evidence, 0.0 if it was not retrieved."""
-    return _score_rows(questions, records, lambda rank: 1.0 / rank if rank else 0.0)
+def make_reciprocal_rank(accepted: Accepted | None = None) -> ScoreFn:
+    """`ScoreFn`: 1/rank of the first accepted email, 0.0 if none was retrieved."""
+
+    def score(questions: list[Question], records: list[Record]) -> Scores:
+        return _score_rows(
+            questions, records, lambda rank: 1.0 / rank if rank else 0.0, accepted or {}
+        )
+
+    return score
+
+
+#: MRR with the evidence alone, as before `accepted` existed.
+reciprocal_rank = make_reciprocal_rank()
 
 
 @dataclass(frozen=True)

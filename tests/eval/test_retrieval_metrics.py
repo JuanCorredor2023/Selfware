@@ -78,3 +78,16 @@ def test_routing_counts_the_folder_the_classifier_chose():
     assert rows["projects"].chosen == (("projects", 1), ("resources", 1))
     assert rows["areas"].routed_right == 1
     assert "| projects | 2 | 1 (50%) | 1 |" in render_routing(list(rows.values()))
+
+
+def test_an_alternate_email_counts_as_a_hit():
+    """A reminder that repeats the answer is a correct retrieval (evidence_alt)."""
+    from selfware.eval.retrieval_metrics import make_reciprocal_rank
+
+    questions = [question("q1", "mail-1")]
+    records = [record("q1", "flat", ["mail-9", "mail-5", "mail-1"])]
+    accepted = {"q1": frozenset({"mail-5"})}
+    assert hit_at_k(2)(questions, records)[("q1", "flat")] == 0.0
+    assert hit_at_k(2, accepted)(questions, records)[("q1", "flat")] == 1.0
+    assert make_reciprocal_rank(accepted)(questions, records)[("q1", "flat")] == 0.5
+    assert reciprocal_rank(questions, records)[("q1", "flat")] == 1 / 3
