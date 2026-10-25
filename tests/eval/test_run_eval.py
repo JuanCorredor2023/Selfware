@@ -178,7 +178,7 @@ def test_retrieval_only_scores_against_the_evidence(
     from selfware.core.schemas import Chunk
     from selfware.eval.harness import Retrieved
 
-    def fake_real_retrieve(chroma):
+    def fake_real_retrieve(chroma, classifier=None):
         def retrieve(query, strategy, k):
             item = "fake" if strategy == "flat" else "other"
             chunk = Chunk("t", item, "areas", datetime(2001, 1, 1, tzinfo=UTC), 0.8)
@@ -216,6 +216,40 @@ def test_real_modes_need_an_index(tmp_path, question_files):
         main(
             [
                 "--real",
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )
+
+
+def test_the_oracle_routes_by_the_question_category():
+    from scripts.run_eval import OracleClassifier
+    from selfware.context.domain import ParaFolder
+    from selfware.core.schemas import Question
+
+    q = Question("q1", "when?", "x", "areas", "mail-1", True, 1)
+    assert OracleClassifier([q]).classify_query("when?") == ParaFolder.AREAS
+
+
+def test_the_oracle_refuses_unanswerable_questions():
+    from scripts.run_eval import OracleClassifier
+    from selfware.core.schemas import Question
+
+    q = Question("x1", "who?", None, None, None, False, None)
+    with pytest.raises(SystemExit):
+        OracleClassifier([q])
+
+
+def test_oracle_needs_a_real_mode(question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--fake",
+                "--oracle",
                 "--run",
                 "x",
                 "--threshold",

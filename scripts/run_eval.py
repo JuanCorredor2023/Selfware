@@ -32,6 +32,12 @@ Three modes, exactly one required:
 
 Both real modes print the Token Factory spend at the end (`scripts/_tally.py`).
 
+`--oracle` (with a real mode) swaps the query classifier for the questions' own
+`category`: the PARA arm always searches the folder the evidence lives in. It
+isolates H1 ("does filtering by the right folder help?") from classifier error,
+and spends no Super calls. Answerable questions only: an unanswerable one has
+no folder to route to.
+
 The report goes to `.cache/reports/<run>.md` by default. `.cache/` is
 gitignored, so a fake report can never be committed by accident.
 """
@@ -128,6 +134,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--chroma", type=Path, help="Chroma index (real modes)")
     parser.add_argument(
+        "--oracle",
+        action="store_true",
+        help="PARA arm routes by each question's true category (real modes)",
+    )
+    parser.add_argument(
         "--workers", type=int, default=4, help="(question, arm) pairs at once"
     )
     parser.add_argument(
@@ -164,12 +175,38 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     if not args.fake and args.chroma is None:
         parser.error("--retrieval-only and --real need --chroma <index folder>")
+    if args.fake and args.oracle:
+        parser.error("--oracle only makes sense with --retrieval-only or --real")
     return args
 
 
-def make_real_retrieve(chroma: Path):
+class OracleClassifier:
+    """Stands in for Person 2's `Classifier` with `--oracle`: the folder of each
+    question is its own `category` (the folder of its evidence, D20.5). Same
+    `classify_query` shape, so `Retrieve` does not know the difference."""
+
+    def __init__(self, questions: list[Question]):
+        self.category_of: dict[str, str] = {}
+        for q in questions:
+            if not q.answerable or not q.category:
+                raise SystemExit(
+                    f"--oracle needs a category for every question; {q.id} has none "
+                    "(run it on the answerable file only)"
+                )
+            if self.category_of.get(q.q, q.category) != q.category:
+                raise SystemExit(f"--oracle: two categories for the text of {q.id}")
+            self.category_of[q.q] = q.category
+
+    def classify_query(self, query: str):
+        from selfware.context.domain import ParaFolder
+
+        return ParaFolder(self.category_of[query])
+
+
+def make_real_retrieve(chroma: Path, classifier=None):
     """Person 2's `Retrieve` over `chroma`, adapted to the harness's `Retrieved`
-    (the one-liner in `Retrieved`'s docstring). Built once per process (F3)."""
+    (the one-liner in `Retrieved`'s docstring). Built once per process (F3).
+    `classifier` defaults to the real one (Super)."""
     from selfware.context.classifier import Classifier
     from selfware.context.domain import Strategy
     from selfware.context.embedder import Embedder
@@ -179,7 +216,7 @@ def make_real_retrieve(chroma: Path):
     if not chroma.expanduser().is_dir():
         raise SystemExit(f"no index at {chroma}: run scripts.index_enron first")
     store = ChromaStore(Embedder(), path=str(chroma.expanduser()))
-    retriever = Retrieve(store, Classifier())
+    retriever = Retrieve(store, classifier or Classifier())
 
     def retrieve(query: str, strategy: str, k: int) -> Retrieved:
         result = retriever.retrieve(query, Strategy(strategy), k)
@@ -273,7 +310,8 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
     tally = Tally()
     tally.wrap(classifier_module, "call")
     tally.wrap(embedder_module, "embed")
-    retrieve = make_real_retrieve(args.chroma)
+    oracle = OracleClassifier(questions) if args.oracle else None
+    retrieve = make_real_retrieve(args.chroma, oracle)
     metrics: dict[str, ScoreFn] = {
         f"hit@{args.k}": hit_at_k(args.k),
         "mrr": reciprocal_rank,
@@ -296,6 +334,11 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
 
         answer = make_answerer(Path(".cache"), llm_call=counted_llm_call)
         warning = None
+    if args.oracle:
+        warning = (warning + " " if warning else "") + (
+            "ORACLE routing: the PARA arm searches each question's true folder, "
+            "not the classifier's. It measures the filter, not the system."
+        )
 
     records = run_harness(questions, retrieve, answer, k=args.k, workers=args.workers)
 
