@@ -446,6 +446,18 @@ def test_the_instructions_ask_for_the_sentinel():
     assert ABSTENTION_SENTINEL in SYSTEM_INSTRUCTIONS
 
 
+def test_everything_the_model_reads_is_in_english():
+    """NOTE ON LANGUAGE in answer.py: the Enron set is English, and a Spanish
+    prompt made Ultra answer in a mix of both. A stray Spanish label would
+    bring that back silently."""
+    prompt = build_prompt("When?", [], profile="Owner of the mailbox")
+    for word in ("Pregunta", "Contexto", "Respondes", "fragmentos", "SIN_RESPUESTA"):
+        assert word not in prompt
+    assert "Question:\nWhen?" in prompt
+    assert "Context about the person:\nOwner of the mailbox" in prompt
+    assert ABSTENTION_SENTINEL == "NO_ANSWER_IN_EXCERPTS"
+
+
 def test_the_sentinel_forces_zero_confidence(tmp_path):
     """The case that motivates all of this: a fluent refusal scored 0.98."""
     llm = FakeLLM(content=ABSTENTION_SENTINEL)
