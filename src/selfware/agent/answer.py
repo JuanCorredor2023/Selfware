@@ -15,16 +15,22 @@ This module does not decide to abstain. It produces a `confidence` and
 never chooses its own path.
 
 NOTE ON LANGUAGE. Everything the model actually reads -- `SYSTEM_INSTRUCTIONS`,
-the section labels in `build_prompt`, and `ABSTENTION_SENTINEL` -- is kept in
-Spanish on purpose. It is experiment data, not prose:
+the section labels in `build_prompt`, and `ABSTENTION_SENTINEL` -- is in
+English since 2026-10-25. It used to be Spanish on purpose, for the personal
+corpus; those reasons stopped holding with the Enron validation set (D26):
 
-  1. The prompt string is part of the cache key (D16), so translating it
-     invalidates all 53 cached entries and the run has to be paid again.
-  2. The `expected` answers in the question set are written in Spanish. A model
-     answering in English would be judged by RAGAS against Spanish references.
+  1. The `expected` answers are now in English, and with a Spanish prompt over
+     English emails Ultra answered in a mix of both languages. That moves the
+     generation confidence (it is computed from the answer's logprobs) for a
+     reason unrelated to the answer.
+  2. The prompt string is part of the cache key (D16): every answer cached with
+     the Spanish prompt is orphaned, and the next run pays for them again.
   3. The R18 measurement (0 of 8 false positives from the sentinel) was taken
-     with exactly this wording. Change the wording and the number no longer
-     describes what is running.
+     with the Spanish wording. It no longer describes what is running and has
+     to be measured again on the answerable set.
+
+There is no "answer in the language of the question" rule: for now every
+question set run against this prompt is in English.
 """
 
 from collections.abc import Callable
@@ -44,18 +50,17 @@ LLMCall = Callable[..., LLMResult]
 #: requires this text to be **byte-for-byte identical** between calls. If it were
 #: assembled with f-strings or rewritten per call, the prefix would change and
 #: nothing would be cached.
-#:
-#: Spanish on purpose -- see the NOTE ON LANGUAGE in the module docstring.
 SYSTEM_INSTRUCTIONS = """\
-Respondes preguntas sobre el correo personal de una persona, usando únicamente los \
-fragmentos que se te dan.
+You answer questions about one person's email, using only the excerpts you are \
+given.
 
-Reglas:
-- Usa SOLO la información de los fragmentos. No completes con conocimiento propio.
-- Si los fragmentos no contienen la respuesta, responde EXACTAMENTE con esta línea y \
-nada más: SIN_RESPUESTA_EN_FRAGMENTOS
-- Responde de forma breve y directa, sin repetir la pregunta.
-- Si la pregunta pide una fecha, un monto o un número, dalo tal como aparece.\
+Rules:
+- Use ONLY the information in the excerpts. Do not fill in from your own knowledge.
+- If the excerpts do not contain the answer, reply with EXACTLY this line and \
+nothing else: NO_ANSWER_IN_EXCERPTS
+- Answer briefly and directly, without repeating the question.
+- If the question asks for a date, an amount or a number, give it exactly as it \
+appears.\
 """
 
 #: The abstention sentinel (R18). When the model emits this string, `_answer`
@@ -78,15 +83,14 @@ nada más: SIN_RESPUESTA_EN_FRAGMENTOS
 #: so a false positive by coincidence is near impossible, and it is stable under
 #: tokenization.
 #:
-#: The VALUE stays in Spanish -- see the NOTE ON LANGUAGE in the module
-#: docstring. It appears verbatim inside SYSTEM_INSTRUCTIONS, and both are part
-#: of the cache key.
+#: It appears verbatim inside SYSTEM_INSTRUCTIONS, and both are part of the
+#: cache key. Changing it changes every cached answer (NOTE ON LANGUAGE).
 #:
 #: Risk that has to be measured, not assumed: that the model emits the sentinel
 #: when it COULD have answered. That is checked against the answerable set -- if
 #: any question that used to answer correctly starts abstaining, the sentinel is
 #: costing retrieval and the wording of the rule needs revisiting.
-ABSTENTION_SENTINEL = "SIN_RESPUESTA_EN_FRAGMENTOS"
+ABSTENTION_SENTINEL = "NO_ANSWER_IN_EXCERPTS"
 
 #: Factory mark for the D8 case: there was no call to the server, so there is no
 #: real `finish_reason`. Since it is not `"stop"`, the harness flags the row and
@@ -131,8 +135,8 @@ def build_prompt(question: str, chunks: list[Chunk], profile: str | None = None)
     which is what the protocol in section 3 requires and what would otherwise
     have to be remembered.
 
-    The literal section labels are in Spanish on purpose -- see the NOTE ON
-    LANGUAGE in the module docstring.
+    The literal section labels are in English, like the instructions (NOTE ON
+    LANGUAGE in the module docstring).
 
     Args:
         question: the question, as is.
@@ -148,12 +152,12 @@ def build_prompt(question: str, chunks: list[Chunk], profile: str | None = None)
     parts.append(SYSTEM_INSTRUCTIONS)
 
     if profile:
-        parts.append(f"Contexto sobre la persona:\n{profile}")
+        parts.append(f"Context about the person:\n{profile}")
 
     for i, chunk in enumerate(chunks, start=1):
         parts.append(f"[{i}] ({chunk.ts.strftime('%d %b %Y')}) {chunk.text}")
 
-    parts.append(f"Pregunta:\n{question}")
+    parts.append(f"Question:\n{question}")
 
     prompt = "\n\n".join(parts)
     return prompt

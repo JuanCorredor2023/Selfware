@@ -39,7 +39,7 @@ EMBEDDER = "Qwen/Qwen3-Embedding-8B"
 #: about 150 tokens. Good for "cents or dollars?", not for an invoice.
 CHARS_PER_TOKEN = 4
 CLASSIFIER_PROMPT_TOKENS = 150
-CLASSIFIER_OUTPUT_TOKENS = 4
+CLASSIFIER_OUTPUT_TOKENS = 300  # Nemotron reasons first: 99-286 tokens measured (P3, 25 Oct)
 
 DEMO_EMAILS = [
     # Projects: concrete goal, an end.

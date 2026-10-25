@@ -125,8 +125,9 @@ def test_the_default_output_goes_under_dot_cache(tmp_path, question_files, monke
     assert (tmp_path / out).exists()
 
 
-def test_without_fake_it_refuses(tmp_path, question_files):
-    """The real mode spends credits; it does not exist yet (step 11)."""
+def test_without_a_mode_it_refuses(tmp_path, question_files):
+    """One of --fake, --retrieval-only or --real is required: no silent default
+    that spends credits."""
     with pytest.raises(SystemExit) as exc:
         main(
             ["--run", "r", "--threshold", "0.3", "--questions", str(question_files[0])]
@@ -164,3 +165,141 @@ def test_an_id_repeated_across_files_raises(tmp_path):
 
     with pytest.raises(ValueError, match="q1"):
         load_all([a, b])
+
+
+def test_retrieval_only_scores_against_the_evidence(
+    tmp_path, question_files, monkeypatch
+):
+    """The real-mode wiring with Person 2's retriever swapped for a double: the
+    flat arm always brings the evidence first, PARA never does."""
+    from datetime import UTC, datetime
+
+    from scripts import run_eval
+    from selfware.core.schemas import Chunk
+    from selfware.eval.harness import Retrieved
+
+    def fake_real_retrieve(chroma, classifier=None):
+        def retrieve(query, strategy, k):
+            item = "fake" if strategy == "flat" else "other"
+            chunk = Chunk("t", item, "areas", datetime(2001, 1, 1, tzinfo=UTC), 0.8)
+            category = "areas" if strategy == "para" else None
+            return Retrieved(chunks=[chunk], query_category=category)
+
+        return retrieve
+
+    monkeypatch.setattr(run_eval, "make_real_retrieve", fake_real_retrieve)
+    out = tmp_path / "r.md"
+    main(
+        [
+            "--retrieval-only",
+            "--chroma",
+            str(tmp_path),
+            "--run",
+            "ro",
+            "--threshold",
+            "0.3",
+            "--n-resamples",
+            "200",
+            "--out",
+            str(out),
+            *[a for f in question_files for a in ("--questions", str(f))],
+        ]
+    )
+    text = out.read_text(encoding="utf-8")
+    assert "RETRIEVAL-ONLY" in text
+    assert "hit@5" in text and "mrr" in text
+    assert "## PARA routing" in text
+
+
+def test_real_modes_need_an_index(tmp_path, question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--real",
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )
+
+
+def test_the_oracle_routes_by_the_question_category():
+    from scripts.run_eval import OracleClassifier
+    from selfware.context.domain import ParaFolder
+    from selfware.core.schemas import Question
+
+    q = Question("q1", "when?", "x", "areas", "mail-1", True, 1)
+    assert OracleClassifier([q]).classify_query("when?") == ParaFolder.AREAS
+
+
+def test_the_oracle_refuses_unanswerable_questions():
+    from scripts.run_eval import OracleClassifier
+    from selfware.core.schemas import Question
+
+    q = Question("x1", "who?", None, None, None, False, None)
+    with pytest.raises(SystemExit):
+        OracleClassifier([q])
+
+
+def test_oracle_needs_a_real_mode(question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--fake",
+                "--oracle",
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )
+
+
+def test_load_accepted_reads_evidence_alt(tmp_path):
+    from scripts.run_eval import load_accepted
+
+    row = answerable("q1", "areas") | {"evidence_alt": ["mail-2", "mail-3"]}
+    path = write_jsonl(tmp_path / "q.jsonl", [row, answerable("q2", "areas")])
+    assert load_accepted([path]) == {"q1": frozenset({"mail-2", "mail-3"})}
+
+
+def test_the_nano_router_sends_the_query_prompt_to_nano(monkeypatch):
+    from scripts.run_eval import make_nano_router
+    from selfware.context import classifier as classifier_module
+    from selfware.context.domain import ParaFolder
+
+    seen = {}
+
+    def fake_call(tier, messages, **kwargs):
+        seen["tier"], seen["system"] = tier, messages[0]["content"]
+        return "areas", None
+
+    monkeypatch.setattr(classifier_module, "call", fake_call)
+    assert make_nano_router().classify_query("q") == ParaFolder.AREAS
+    assert seen["tier"] == "nano"
+    assert seen["system"] == classifier_module._QUERY_PROMPT
+
+
+def test_oracle_and_router_do_not_mix(tmp_path, question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--retrieval-only",
+                "--oracle",
+                "--router",
+                "nano",
+                "--chroma",
+                str(tmp_path),
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )

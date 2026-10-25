@@ -41,6 +41,12 @@ _DOCUMENT_PROMPT = (
 _QUERY_TIER = "super"
 _DOCUMENT_TIER = "nano"
 
+# Nemotron reasons before it answers, and the reasoning counts against
+# max_tokens. With 4 tokens it is cut mid-thought and `content` comes back
+# None (measured 2026-10-25: 3 of 3 queries). Super used 99-286 output tokens
+# to emit the one word; 1024 leaves room for longer emails.
+_MAX_TOKENS = 1024
+
 
 class Classifier:
     def __init__(self, on_tier_call: Callable[[TierCall], None] | None = None):
@@ -59,13 +65,16 @@ class Classifier:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": text},
         ]
-        response, tier_call = call(tier, messages, temperature=0, max_tokens=4)
+        response, tier_call = call(
+            tier, messages, temperature=0, max_tokens=_MAX_TOKENS
+        )
         if self._on_tier_call is not None:
             self._on_tier_call(tier_call)
         return self._parse_to_para_folder(response)
 
-    def _parse_to_para_folder(self, text: str) -> ParaFolder:
-        cleaned = text.strip().lower()
+    def _parse_to_para_folder(self, text: str | None) -> ParaFolder:
+        # None = the model was cut off before answering: same as no match.
+        cleaned = (text or "").strip().lower()
         for category in ParaFolder:
             if category.value in cleaned:
                 return category

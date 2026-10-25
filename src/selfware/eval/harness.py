@@ -20,6 +20,7 @@ Contract types come from `core.schemas`, the single shared definition
 
 import json
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -117,6 +118,10 @@ class Record:
             counts and means, never rows, and nothing here writes rows to disk.
             Whoever adds a dump of `Record`s someday has to treat it like the
             corpus (D4).
+        item_ids: the `item_id` of each retrieved chunk, in the same order as
+            `contexts`. It is what the evidence-based metrics read (hit@k, MRR in
+            `retrieval_metrics.py`): did this arm bring back the email the
+            question was written from?
 
     The last three have defaults because they are exactly what a row with
     nothing extra would carry, so the many `Record(...)` already written in
@@ -133,6 +138,7 @@ class Record:
     fell_back_to_flat: bool = False
     query_category: str | None = None
     contexts: tuple[str, ...] = ()
+    item_ids: tuple[str, ...] = ()
 
 
 def load_questions(path: Path) -> list[Question]:
@@ -193,6 +199,7 @@ def run(
     retrieve: RetrieveFn,
     answer: AnswerFn,
     k: int = 5,
+    workers: int = 1,
 ) -> list[Record]:
     """Run every question through both arms.
 
@@ -210,6 +217,11 @@ def run(
         k: how many chunks to ask for. **The same value goes to both arms**
             (D11). Choosing a different `k` per strategy stops comparing the
             filter and starts comparing two configurations.
+        workers: how many (question, arm) pairs run at once. With real models
+            each pair waits seconds on the network, so ~340 of them in sequence
+            take over an hour. The rows come back in the same order whatever
+            this is (`map` keeps the input order), so it does not touch
+            reproducibility.
 
     Returns:
         One row per question per arm, that is `len(questions) * 2`, in
@@ -221,35 +233,40 @@ def run(
         not "did it say this text?" (D21). That is `report.py`'s job, not this
         module's.
 
-    OPEN DESIGN QUESTION -- what to do if `answer` raises.
-        Today the exception propagates and the run stops. That is the simplest
-        thing and it makes the problem impossible to ignore, and the cache makes
-        repeating cheap. But over ~130 real calls, one malformed response (for
-        example without `</think>`, which triggers `ThinkTagNotFoundError`) would
-        bring the whole run down. The alternative, more in line with D8 and D17,
-        is to catch it and record the row as `flagged`: a counted failure is a
-        result; a failure that stops everything is an obstacle. To be decided
-        before the first big run.
+    If `answer` raises, the row is recorded as `flagged` with
+    `finish_reason="error:<ExceptionType>"` and the run goes on (decided
+    2026-10-25, before the first big run). Over ~340 real calls one malformed
+    response (for example without `</think>`, `ThinkTagNotFoundError`) would
+    otherwise bring the whole run down; a counted failure is a result (D8,
+    D17), and the report already keeps flagged rows out of the averages.
+    `retrieve` errors still propagate: without chunks there is no row.
     """
 
-    records = []
-
-    for question in questions:
-        for strategy in STRATEGIES:
-            retrieved = retrieve(question.q, strategy, k)
+    def one(pair: tuple[Question, Strategy]) -> Record:
+        question, strategy = pair
+        retrieved = retrieve(question.q, strategy, k)
+        try:
             ans = answer(question.q, retrieved.chunks)
-            record = Record(
-                question_id=question.id,
-                strategy=strategy,
-                text=ans.text,
-                confidence=ans.confidence,
-                n_chunks=len(retrieved.chunks),
-                finish_reason=ans.finish_reason,
-                flagged=ans.finish_reason != "stop",
-                fell_back_to_flat=retrieved.fell_back_to_flat,
-                query_category=retrieved.query_category,
-                contexts=tuple(c.text for c in retrieved.chunks),
-            )
-            records.append(record)
+            text, conf, finish = ans.text, ans.confidence, ans.finish_reason
+        except Exception as e:  # noqa: BLE001 -- see "If `answer` raises"
+            text, conf, finish = "", 0.0, f"error:{type(e).__name__}"
+        record = Record(
+            question_id=question.id,
+            strategy=strategy,
+            text=text,
+            confidence=conf,
+            n_chunks=len(retrieved.chunks),
+            finish_reason=finish,
+            flagged=finish != "stop",
+            fell_back_to_flat=retrieved.fell_back_to_flat,
+            query_category=retrieved.query_category,
+            contexts=tuple(c.text for c in retrieved.chunks),
+            item_ids=tuple(c.item_id for c in retrieved.chunks),
+        )
+        return record
 
-    return records
+    pairs = [(q, s) for q in questions for s in STRATEGIES]
+    if workers <= 1:
+        return [one(p) for p in pairs]
+    with ThreadPoolExecutor(workers) as pool:
+        return list(pool.map(one, pairs))
