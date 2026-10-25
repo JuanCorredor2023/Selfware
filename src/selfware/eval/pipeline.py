@@ -95,6 +95,40 @@ def evaluate(
         The report, exactly as `render_markdown` returns it.
     """
     records = run_harness(questions=questions, retrieve=retrieve, answer=answer, k=k)
+    return render_report(
+        questions,
+        records,
+        score,
+        run=run,
+        metric=metric,
+        threshold=threshold,
+        k=k,
+        n_resamples=n_resamples,
+        seed=seed,
+        warning=warning,
+    )
+
+
+def render_report(
+    questions: list[Question],
+    records: list[Record],
+    score: ScoreFn,
+    *,
+    run: str,
+    metric: str,
+    threshold: float,
+    k: int = 5,
+    n_resamples: int = 10_000,
+    seed: int = 0,
+    warning: str | None = None,
+) -> str:
+    """Steps 2-6 of `evaluate`, from rows already run.
+
+    Split out so one real run can be reported under several metrics (hit@k,
+    MRR, context precision, context recall) without asking the models again:
+    the rows are what costs credits, the scoring and the tables do not (except
+    RAGAS, which spends only on its own judge).
+    """
     scores = score(questions, records)
     operational_rows = operational_table(questions=questions, records=records)
 
