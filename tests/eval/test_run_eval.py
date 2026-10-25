@@ -266,3 +266,40 @@ def test_load_accepted_reads_evidence_alt(tmp_path):
     row = answerable("q1", "areas") | {"evidence_alt": ["mail-2", "mail-3"]}
     path = write_jsonl(tmp_path / "q.jsonl", [row, answerable("q2", "areas")])
     assert load_accepted([path]) == {"q1": frozenset({"mail-2", "mail-3"})}
+
+
+def test_the_nano_router_sends_the_query_prompt_to_nano(monkeypatch):
+    from scripts.run_eval import make_nano_router
+    from selfware.context import classifier as classifier_module
+    from selfware.context.domain import ParaFolder
+
+    seen = {}
+
+    def fake_call(tier, messages, **kwargs):
+        seen["tier"], seen["system"] = tier, messages[0]["content"]
+        return "areas", None
+
+    monkeypatch.setattr(classifier_module, "call", fake_call)
+    assert make_nano_router().classify_query("q") == ParaFolder.AREAS
+    assert seen["tier"] == "nano"
+    assert seen["system"] == classifier_module._QUERY_PROMPT
+
+
+def test_oracle_and_router_do_not_mix(tmp_path, question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--retrieval-only",
+                "--oracle",
+                "--router",
+                "nano",
+                "--chroma",
+                str(tmp_path),
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )

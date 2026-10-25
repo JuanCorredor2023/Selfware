@@ -32,6 +32,11 @@ Three modes, exactly one required:
 
 Both real modes print the Token Factory spend at the end (`scripts/_tally.py`).
 
+`--router nano` (with a real mode) classifies the queries with Nano instead of
+Super, using Person 2's same query prompt. With the Nano-labelled index it puts
+the same model on both sides (filing and searching), which tells apart "PARA
+needs one consistent taxonomy" from "this classifier is bad".
+
 `--oracle` (with a real mode) swaps the query classifier for the questions' own
 `category`: the PARA arm always searches the folder the evidence lives in. It
 isolates H1 ("does filtering by the right folder help?") from classifier error,
@@ -150,6 +155,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--chroma", type=Path, help="Chroma index (real modes)")
     parser.add_argument(
+        "--router",
+        choices=["super", "nano"],
+        default="super",
+        help="model that classifies the query in the PARA arm (real modes)",
+    )
+    parser.add_argument(
         "--oracle",
         action="store_true",
         help="PARA arm routes by each question's true category (real modes)",
@@ -193,6 +204,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--retrieval-only and --real need --chroma <index folder>")
     if args.fake and args.oracle:
         parser.error("--oracle only makes sense with --retrieval-only or --real")
+    if args.oracle and args.router != "super":
+        parser.error("--oracle replaces the router; do not combine it with --router")
     return args
 
 
@@ -217,6 +230,19 @@ class OracleClassifier:
         from selfware.context.domain import ParaFolder
 
         return ParaFolder(self.category_of[query])
+
+
+def make_nano_router():
+    """Person 2's `Classifier` with the query routed to Nano instead of Super:
+    same prompt, same parsing, another model. Built here, in the composition
+    root, so `context/` is untouched."""
+    from selfware.context import classifier as classifier_module
+
+    class NanoRouter(classifier_module.Classifier):
+        def classify_query(self, query: str):
+            return self._classify(query, classifier_module._QUERY_PROMPT, "nano")
+
+    return NanoRouter()
 
 
 def make_real_retrieve(chroma: Path, classifier=None):
@@ -327,8 +353,13 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
     tally.wrap(classifier_module, "call")
     tally.wrap(embedder_module, "embed")
     accepted = load_accepted(args.questions)
-    oracle = OracleClassifier(questions) if args.oracle else None
-    retrieve = make_real_retrieve(args.chroma, oracle)
+    if args.oracle:
+        router = OracleClassifier(questions)
+    elif args.router == "nano":
+        router = make_nano_router()
+    else:
+        router = None
+    retrieve = make_real_retrieve(args.chroma, router)
     metrics: dict[str, ScoreFn] = {
         f"hit@{args.k}": hit_at_k(args.k, accepted),
         "mrr": make_reciprocal_rank(accepted),
@@ -351,6 +382,10 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
 
         answer = make_answerer(Path(".cache"), llm_call=counted_llm_call)
         warning = None
+    if args.router == "nano":
+        warning = (warning + " " if warning else "") + (
+            "Queries routed by Nano (Person 2's query prompt), not Super."
+        )
     if args.oracle:
         warning = (warning + " " if warning else "") + (
             "ORACLE routing: the PARA arm searches each question's true folder, "
