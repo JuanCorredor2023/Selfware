@@ -5,8 +5,8 @@ flat vector index over the same mailbox, per question category?
 
 | File | Questions |
 |---|---|
-| `enron_kaminski-v.jsonl` | 150 answerable: 50 `projects`, 50 `areas`, 50 `resources`. One evidence email each, all different |
-| `enron_kaminski-v_abstain.jsonl` | 15 unanswerable (D21): plausible for this mailbox, answer not in the corpus |
+| `enron_kaminski-v.jsonl` | 200 answerable: 67 `projects`, 67 `areas`, 66 `resources`. One evidence email each, all different |
+| `enron_kaminski-v_abstain.jsonl` | 25 unanswerable (D21): plausible for this mailbox, answer not in the corpus |
 
 The corpus is **not** in this repo: these files hold the questions only.
 
@@ -65,25 +65,32 @@ uv run python -m scripts.run_eval --retrieval-only \
 
 - Two steps per question, against lexical contamination (D27): extract the fact from
   the email, then write the question from the fact only, as the mailbox owner would ask
-  it. Median Jaccard overlap between question and email: 0.056–0.078 per category.
+  it. Median Jaccard overlap between question and email: 0.057–0.073 per category.
 - One hop, absolute time anchors (D20). No summaries, opinions or counting.
 - Unique evidence: `evidence_quote` appears in at most 3 emails. Facts copied into
   emails of other folders were dropped, so the flat arm does not find copies that the
   filter would hide.
-- `hard_case: true` (20): a sibling email from the same thread or series could pull
+- `hard_case: true` (26): a sibling email from the same thread or series could pull
   retrieval away (D28).
-- `pii: true` (30): `expected` contains a person's name or personal data.
+- `pii: true` (34): `expected` contains a person's name or personal data.
 
 ## Declared limitations
 
 1. **The PARA labels are our interpretation** of another person's folders, frozen on
    2026-10-25 (D23). They are not a ground truth: `risk`, `stanford`, `ut` and `eci`
    are the debatable ones.
-2. **All 165 are `source: "ai-drafted"`**. A human reviewer has to read a random sample
+2. **All 225 are `source: "ai-drafted"`**. A human reviewer has to read a random sample
    against the email and mark the ones that hold as `"human-verified"` for D27's check
    (does the flat-vs-PARA difference hold in each subset?).
 3. **Real private email.** The Enron corpus is public, but it is the correspondence of
    people most of whom had nothing to do with the FERC investigation. Use it for
    research only, and do not republish personal details from it.
-4. The corpus is unbalanced (63% `areas`); the questions are balanced (50 each) so every
+4. The corpus is unbalanced (63% `areas`); the questions are balanced (~67 each) so every
    category gets the same statistical power.
+
+## History
+
+- 2026-10-25: first 150 + 15 (ids `...001`–`...050`, `en-x?01`–`05`).
+- 2026-10-25: +50 + 10 to reach 200 + 25 (ids `...051`–`...067`, `en-x?06`–`09`),
+  written with the same method and checked together with the first set (no shared
+  evidence, no repeated fact).
