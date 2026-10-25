@@ -125,8 +125,9 @@ def test_the_default_output_goes_under_dot_cache(tmp_path, question_files, monke
     assert (tmp_path / out).exists()
 
 
-def test_without_fake_it_refuses(tmp_path, question_files):
-    """The real mode spends credits; it does not exist yet (step 11)."""
+def test_without_a_mode_it_refuses(tmp_path, question_files):
+    """One of --fake, --retrieval-only or --real is required: no silent default
+    that spends credits."""
     with pytest.raises(SystemExit) as exc:
         main(
             ["--run", "r", "--threshold", "0.3", "--questions", str(question_files[0])]
@@ -164,3 +165,62 @@ def test_an_id_repeated_across_files_raises(tmp_path):
 
     with pytest.raises(ValueError, match="q1"):
         load_all([a, b])
+
+
+def test_retrieval_only_scores_against_the_evidence(
+    tmp_path, question_files, monkeypatch
+):
+    """The real-mode wiring with Person 2's retriever swapped for a double: the
+    flat arm always brings the evidence first, PARA never does."""
+    from datetime import UTC, datetime
+
+    from scripts import run_eval
+    from selfware.core.schemas import Chunk
+    from selfware.eval.harness import Retrieved
+
+    def fake_real_retrieve(chroma):
+        def retrieve(query, strategy, k):
+            item = "fake" if strategy == "flat" else "other"
+            chunk = Chunk("t", item, "areas", datetime(2001, 1, 1, tzinfo=UTC), 0.8)
+            category = "areas" if strategy == "para" else None
+            return Retrieved(chunks=[chunk], query_category=category)
+
+        return retrieve
+
+    monkeypatch.setattr(run_eval, "make_real_retrieve", fake_real_retrieve)
+    out = tmp_path / "r.md"
+    main(
+        [
+            "--retrieval-only",
+            "--chroma",
+            str(tmp_path),
+            "--run",
+            "ro",
+            "--threshold",
+            "0.3",
+            "--n-resamples",
+            "200",
+            "--out",
+            str(out),
+            *[a for f in question_files for a in ("--questions", str(f))],
+        ]
+    )
+    text = out.read_text(encoding="utf-8")
+    assert "RETRIEVAL-ONLY" in text
+    assert "hit@5" in text and "mrr" in text
+    assert "## PARA routing" in text
+
+
+def test_real_modes_need_an_index(tmp_path, question_files):
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--real",
+                "--run",
+                "x",
+                "--threshold",
+                "0.3",
+                "--questions",
+                str(question_files[0]),
+            ]
+        )
