@@ -26,7 +26,9 @@ class ContextItem(BaseModel):
     id: str
     source: Literal["gmail"]  # more sources will come later
     text: str
-    category: str
+    category: str | None = (
+        None  # filled later by the PARA classifier (context/ingest_classify)
+    )
     ts: datetime
 
 
