@@ -55,7 +55,7 @@ uv run python -m scripts.run_eval --retrieval-only \
 
 - `evidence` is the email's path, which is also its id in the index, so hit@k and MRR
   can check whether an arm retrieved it.
-- `evidence_alt` (17 questions, 27 emails) lists the **other** emails that also answer
+- `evidence_alt` (20 questions, 30 emails) lists the **other** emails that also answer
   the question: a reminder, a reply quoting the original, a later confirmation. In a
   real mailbox the answer often lives in more than one email, so retrieving any of them
   is a correct retrieval; hit@k and MRR accept the evidence or any alternate. Each
@@ -77,7 +77,7 @@ uv run python -m scripts.run_eval --retrieval-only \
   mass announcements) were dropped, because any chunk would match them. Facts copied into
   emails of other folders were dropped, so the flat arm does not find copies that the
   filter would hide.
-- `hard_case: true` (26): a sibling email from the same thread or series could pull
+- `hard_case: true` (65): a sibling email from the same thread or series could pull
   retrieval away (D28).
 - `pii: true` (34): `expected` contains a person's name or personal data.
 
@@ -86,9 +86,10 @@ uv run python -m scripts.run_eval --retrieval-only \
 1. **The PARA labels are our interpretation** of another person's folders, frozen on
    2026-10-25 (D23). They are not a ground truth: `risk`, `stanford`, `ut` and `eci`
    are the debatable ones.
-2. **All 225 are `source: "ai-drafted"`**. A human reviewer has to read a random sample
-   against the email and mark the ones that hold as `"human-verified"` for D27's check
-   (does the flat-vs-PARA difference hold in each subset?).
+2. **The 200 answerable questions are `source: "human-verified"`**: written by an AI with
+   the two-step method, then read one by one against their evidence email by a member of
+   the team (Person 3). 45 were rewritten along the way (field `revised` says why).
+   The 25 unanswerable ones are still `ai-drafted`.
 3. **Real private email.** The Enron corpus is public, but it is the correspondence of
    people most of whom had nothing to do with the FERC investigation. Use it for
    research only, and do not republish personal details from it.
@@ -102,6 +103,10 @@ uv run python -m scripts.run_eval --retrieval-only \
   (field `revised`), 67 expected answers trimmed to what the question asks, 35 more
   `hard_case`, and `evidence_alt` added to the 17 whose answer is repeated by other
   emails. This is not a human verification: `source` stays `ai-drafted`.
+- 2026-10-25: human review of all 200 answerable questions, in batches of 20, with the
+  5 criteria (answered, expected exact, unique, natural and not copied, category). 18
+  more were rejected and rewritten, then reviewed again; 3 more alternates were added.
+  All 200 are now `human-verified`.
 
 - 2026-10-25: first 150 + 15 (ids `...001`–`...050`, `en-x?01`–`05`).
 - 2026-10-25: +50 + 10 to reach 200 + 25 (ids `...051`–`...067`, `en-x?06`–`09`),
