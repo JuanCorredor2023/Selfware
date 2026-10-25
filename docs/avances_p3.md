@@ -61,17 +61,23 @@ esconde la respuesta.
 
 ## 3. Resultados
 
-Reportes `*-v2.md`, con las 200 preguntas **antes** de las últimas 18 correcciones
-humanas; falta la corrida final (sección 5).
+Reportes finales `final-*.md`, con las 200 preguntas ya verificadas por el humano.
 
 **hit@5: ¿el correo correcto está entre los 5 primeros? (flat ≈ 0.92)**
 
-| | La pregunta la clasifica **Super** | La pregunta va a su carpeta real (**oráculo**) |
-|---|---:|---:|
-| Correos etiquetados por el **dueño** | 0.45 (**−0.47**) | **0.94 (+0.03, IC [+0.01, +0.05])** |
-| Correos etiquetados por **Nano** | 0.26 (**−0.66**) | 0.41 (**−0.51**) |
+| Quién archivó los correos | Quién clasifica la pregunta | PARA | PARA − flat (IC 95%) |
+|---|---|---:|---|
+| El dueño (sus carpetas) | Super (sistema actual) | 0.45 | **−0.48** [−0.55, −0.41] |
+| El dueño (sus carpetas) | **Oráculo** (la carpeta real) | **0.95** | **+0.03** [+0.01, +0.06] |
+| Nano | Super (dos criterios distintos) | 0.24 | **−0.68** [−0.74, −0.61] |
+| Nano | **Nano** (el mismo modelo en los dos lados) | 0.43 | **−0.48** [−0.56, −0.41] |
+| Nano | Oráculo | 0.41 | **−0.51** [−0.58, −0.43] |
 
-**Sistema real completo** (Ultra responde, RAGAS juzga):
+MRR del oráculo con las carpetas del dueño: **+0.05** [+0.03, +0.07]; en projects el
+hit@5 sube +0.06 [+0.01, +0.12].
+
+**Sistema real completo** (Ultra responde, RAGAS juzga; corrida v2, de antes de las
+últimas correcciones humanas, con números prácticamente iguales):
 
 | | flat | PARA | PARA − flat |
 |---|---:|---:|---|
@@ -81,18 +87,22 @@ humanas; falta la corrida final (sección 5).
 | "No sé" de más en las 200 con respuesta | 8% | 55% | |
 
 **Qué significa (la historia para el video):**
-1. Con la carpeta correcta, PARA **sí mejora** la recuperación: el correo correcto
-   queda más arriba (MRR +0.04, significativo).
-2. Pero PARA necesita **dos clasificaciones correctas**: al guardar (Nano coincide con
-   el dueño solo en el 34% y manda el 81% de los correos a projects) y al buscar
-   (Super manda el 76% de las preguntas a resources). Si falla cualquiera de las dos,
-   **el filtro esconde la respuesta**.
-3. Cuando eso pasa, el sistema casi siempre dice **"no sé"** en vez de inventar. Lo
+1. Con la carpeta correcta, PARA **sí mejora** la recuperación (oráculo: hit@5 +0.03 y
+   MRR +0.05, significativos): el correo correcto queda más arriba.
+2. Un filtro duro exige que **archivar y buscar usen la misma taxonomía**. Con dos
+   criterios distintos (Nano archiva, Super busca) es la peor configuración (0.24);
+   con el mismo modelo en los dos lados casi se duplica (0.43).
+3. **Pero ni así basta:** el mismo modelo no clasifica igual un correo completo que
+   una pregunta corta (Nano mandó 34 de las 67 preguntas de areas a projects y 19 a
+   archive), y el filtro esconde la respuesta en más de la mitad de los casos.
+4. Cuando eso pasa, el sistema casi siempre dice **"no sé"** en vez de inventar. Lo
    detecta la señal de confianza de recuperación (D24).
-4. RAGAS (un juez por significado) y hit@5 (por id) dan lo mismo, y los resultados no
-   cambiaron al limpiar las preguntas: el resultado es robusto.
+5. RAGAS (un juez por significado) y hit@5 (por id) dan lo mismo, y los números no
+   cambiaron al corregir las preguntas: el resultado es robusto.
+6. La salida natural, para trabajo futuro: un **filtro suave**, que use PARA para
+   ordenar los resultados y no para excluirlos.
 
-**Gasto total en créditos de Nebius: ≈ US$5.6** (indexado ≈ US$0.20; corridas de solo
+**Gasto total en créditos de Nebius: ≈ US$5.7** (indexado ≈ US$0.20; corridas de solo
 recuperación ≈ US$0.05 cada una; corridas completas con Ultra y RAGAS ≈ US$1.5–2.2).
 
 ## 4. Cómo reproducirlo
@@ -126,7 +136,7 @@ fuera del repo: `paquete_equipo.tar.gz`.
 
 | # | Qué | Costo |
 |---|---|---|
-| 7 | **Corrida final** con las 200 preguntas ya corregidas por el humano: solo recuperación, y si se quiere, la completa | ≈ US$0.11 / ≈ US$2.2 |
+| 7 | ~~Corrida final de solo recuperación~~ (hecha: `final-*.md`). Opcional: la completa con Ultra y RAGAS sobre las preguntas finales | ≈ US$2.2 |
 | 8 | **Calibrar el umbral de abstención** con `eval/calibrate.py` (hoy es 0.30 fijado de antemano). Hace falta guardar el detalle por fila en `run_eval` | Cambio chico |
 | 9 | **R18**: medir si Ultra dice "no sé" cuando la respuesta sí estaba en los fragmentos (el prompt cambió a inglés) | Sale de lo mismo que el #8 |
 | 10 | Revisar a mano las **25 preguntas de abstención** (siguen `ai-drafted`) | ~20 min |
@@ -138,7 +148,7 @@ fuera del repo: `paquete_equipo.tar.gz`.
 | # | Qué | Quién |
 |---|---|---|
 | 13 | Revisar y aprobar los commits *for Person 2* y *for Person 4* de esta rama | P2, P4 |
-| 14 | **Decidir qué hacer con el clasificador**, el hallazgo principal: dejarlo como resultado ("así falla") o mejorarlo (ejemplos en el prompt, o un filtro suave que complete con flat). Si se mejora después de ver los resultados, hay que declararlo | P2 + equipo |
+| 14 | **Decidir qué hacer con el clasificador**, el hallazgo principal. La corrida Nano + Nano muestra que el problema es la consistencia entre archivar y buscar, más que un modelo en particular. Opciones: dejarlo como resultado, o probar un filtro suave que complete con flat. Si se cambia después de ver los resultados, hay que declararlo | P2 + equipo |
 | 15 | Formatear 5 archivos de `context/` para que el CI quede en verde (`ruff format`) | P2 |
 | 16 | Fusionar `p1/full-ingestion`: choca con `core/schemas.py` (`ContextItem`) y duplica los pines de RAGAS en `pyproject.toml` | P1 |
 
