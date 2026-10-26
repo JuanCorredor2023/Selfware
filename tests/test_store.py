@@ -10,6 +10,7 @@ prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico
   - Ensamblado: los Chunk salen con texto, Source con enum y datetime, score en [0,1].
   - Validación: add_documents vacío lanza.
 """
+
 import hashlib
 import random
 from datetime import datetime
@@ -36,9 +37,10 @@ class FakeEmbedder:
         return self._to_embedding(query)
 
     def _to_embedding(self, text: str) -> list[float]:
-        seed = int(hashlib.sha256(text.encode('utf-8')).hexdigest(), 16)
+        seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest(), 16)
         rng = random.Random(seed)
         return [rng.random() for _ in range(self.dimensions)]
+
 
 def make_store(tmp_path):
     # tmp_path es una fixture de pytest: un directorio temporal único por test.

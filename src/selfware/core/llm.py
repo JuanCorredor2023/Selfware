@@ -41,7 +41,7 @@ MODEL_IDS = {
     # Chosen 2026-09-20; the catalog also lists Qwen/Qwen3-30B-A3B-Instruct-2507
     # as a cheaper fallback (priced in observability/cost.py).
     "judge": "Qwen/Qwen3-235B-A22B-Instruct-2507",
-    "embedder":"Qwen/Qwen3-Embedding-8B" 
+    "embedder": "Qwen/Qwen3-Embedding-8B",
 }
 
 Tier = Literal["nano", "super", "ultra", "judge"]
@@ -157,6 +157,7 @@ def call_with_logprobs(tier: Tier, messages: list[dict], **kwargs) -> LLMResult:
         tier_call=tier_call,
     )
 
+
 def embed(texts: list[str], **kwargs):
     """
     Embeddings against Token Factory. Parallel to call(), but hits the
@@ -178,7 +179,7 @@ def embed(texts: list[str], **kwargs):
     """
 
     client = _get_client()
-    model  = MODEL_IDS["embedding"]
+    model = MODEL_IDS["embedding"]
 
     start = time.perf_counter()
     response = client.embeddings.create(model=model, input=texts, **kwargs)
