@@ -79,10 +79,6 @@ def test_call_ingest_skips_deleted_message(use_service):
     assert [i.id for i in items] == ["m1", "m3"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="call_ingest prints and returns None; the scheduled job must fail",
-)
 def test_call_ingest_listing_error_raises(use_service):
     use_service(FakeGmailService(list_error=http_error(500)))
     with pytest.raises(HttpError):
