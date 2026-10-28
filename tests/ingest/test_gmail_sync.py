@@ -117,11 +117,6 @@ def test_get_added_messages_requests_only_message_added():
     assert request["startHistoryId"] == "100"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="pointer comes from a later getProfile call, so mail arriving "
-    "between the two requests is skipped forever",
-)
 def test_get_added_messages_returns_pointer_from_history_response():
     service = FakeGmailService(
         profile_history_id="999",
@@ -140,10 +135,6 @@ def test_get_added_messages_no_changes():
     assert pointer is not None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="history reports drafts, spam and trash; the full listing does not",
-)
 def test_get_added_messages_skips_drafts_spam_trash():
     service = FakeGmailService(
         history_pages={
@@ -185,10 +176,6 @@ def test_get_messages_with_pointer_does_incremental():
     assert not service.calls_named("messages.list")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="on a 404 get_messages prints and returns None instead of falling back",
-)
 def test_get_messages_expired_pointer_falls_back():
     service = FakeGmailService(
         profile_history_id="42",
@@ -198,10 +185,6 @@ def test_get_messages_expired_pointer_falls_back():
     assert gmail.get_messages(service, "1") == (["m1", "m2"], "42")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="non-404 errors are swallowed; a scheduled job must fail visibly",
-)
 @pytest.mark.parametrize("status", [401, 500])
 def test_get_messages_other_http_error_propagates(status):
     service = FakeGmailService(history_error=http_error(status))

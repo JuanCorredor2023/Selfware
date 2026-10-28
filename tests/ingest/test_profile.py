@@ -10,9 +10,9 @@ def test_read_profile_returns_text(tmp_path):
 
 def test_read_profile_strips_each_line(tmp_path):
     path = tmp_path / "profile.txt"
-    path.write_text("  Diana  \n", encoding="utf-8")
+    path.write_text("  Hello  \n", encoding="utf-8")
 
-    assert profile.read_profile(path) == "Diana"
+    assert profile.read_profile(path) == "Hello"
 
 
 def test_read_profile_keeps_utf8(tmp_path):

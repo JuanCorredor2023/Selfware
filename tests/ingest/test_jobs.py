@@ -1,20 +1,16 @@
 """ingest/jobs.py: one scheduled run (GitHub Actions) = read pointer -> fetch new
 emails -> upsert into the index -> save pointer.
 
-jobs.py still runs everything at import time, so every test here imports it
-through `jobs_module`, which first swaps ChromaStore, Embedder and call_ingest
-for mocks: importing it for real would start OAuth and the Embedder spends
-Nebius credits.
+Every test here imports jobs.py through `jobs_module`, which first swaps
+ChromaStore, Embedder and call_ingest for mocks, so a regression back to
+import-time side effects can't start OAuth or spend Nebius credits.
 
-The tests marked xfail(strict=True) pin the contract jobs.py should expose:
+The contract jobs.py exposes:
 
-    main(store, state) -> None
+    main(store, state, classifier=None) -> None
         store: anything with add_documents(list[Document])
         state: anything with load() -> str | None and save(history_id)
     to_document(item: ContextItem) -> Document
-
-When `main` lands they start passing, strict mode fails them, and the marker
-must go.
 """
 
 import hashlib
@@ -31,10 +27,6 @@ from selfware.context.domain import Document
 from selfware.context.store import ChromaStore
 from selfware.core.schemas import ContextItem
 from selfware.ingest import gmail
-
-NOT_YET = pytest.mark.xfail(
-    strict=True, reason="jobs.py has no main(store, state) / to_document yet"
-)
 
 
 def make_item(msg_id, text="hello", category="resources"):
@@ -115,16 +107,12 @@ def jobs_module(monkeypatch, ingest_result):
     sys.modules.pop("selfware.ingest.jobs", None)
 
 
-@pytest.mark.xfail(
-    strict=True, reason="jobs.py connects to Gmail and Chroma at import time"
-)
 def test_importing_jobs_has_no_side_effects(jobs_module, ingest_result):
     assert not ingest_result.called
     assert not jobs_module.test_mocks["ChromaStore"].called
     assert not jobs_module.test_mocks["Embedder"].called
 
 
-@NOT_YET
 def test_main_converts_context_items_to_documents(jobs_module, ingest_result):
     ingest_result.return_value = ([make_item("m1", "Hi"), make_item("m2", "Yo")], "7")
     store = FakeStore()
@@ -141,7 +129,6 @@ def test_main_converts_context_items_to_documents(jobs_module, ingest_result):
     )
 
 
-@NOT_YET
 def test_main_with_no_new_emails_does_not_crash(jobs_module, ingest_result):
     """A quiet hour is the normal case; add_documents([]) raises."""
     ingest_result.return_value = ([], "8")
@@ -153,7 +140,6 @@ def test_main_with_no_new_emails_does_not_crash(jobs_module, ingest_result):
     assert state.saved == "8"
 
 
-@NOT_YET
 def test_main_saves_pointer_after_indexing(jobs_module, ingest_result):
     ingest_result.return_value = ([make_item("m1")], "9")
     events = []
@@ -163,7 +149,6 @@ def test_main_saves_pointer_after_indexing(jobs_module, ingest_result):
     assert events == ["add", "save"]
 
 
-@NOT_YET
 def test_main_does_not_save_pointer_if_indexing_fails(jobs_module, ingest_result):
     """Otherwise the next run starts after emails that never reached the index."""
     ingest_result.return_value = ([make_item("m1")], "9")
@@ -175,19 +160,16 @@ def test_main_does_not_save_pointer_if_indexing_fails(jobs_module, ingest_result
     assert state.saved is None
 
 
-@NOT_YET
 def test_main_first_run_without_state(jobs_module, ingest_result):
     jobs_module.main(store=FakeStore(), state=FakeState(None))
     ingest_result.assert_called_once_with(None)
 
 
-@NOT_YET
 def test_main_passes_stored_pointer(jobs_module, ingest_result):
     jobs_module.main(store=FakeStore(), state=FakeState("5"))
     ingest_result.assert_called_once_with("5")
 
 
-@NOT_YET
 def test_rerun_same_emails_is_idempotent(jobs_module, ingest_result, tmp_path):
     """Retries after a failed run re-read the same emails; the index must not
     grow. Uses real Chroma in tmp_path with a local embedder."""

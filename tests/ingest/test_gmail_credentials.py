@@ -92,10 +92,6 @@ def test_missing_token_runs_local_flow_and_creates_dir(monkeypatch, secrets_dir)
     assert (secrets_dir / "token.json").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="no non-interactive login yet: CI would hang on the browser flow",
-)
 def test_ci_token_from_env_never_opens_browser(monkeypatch, secrets_dir):
     creds = FakeCreds(valid=True)
     monkeypatch.setenv("GMAIL_TOKEN_JSON", json.dumps({"refresh_token": "r"}))
@@ -107,10 +103,6 @@ def test_ci_token_from_env_never_opens_browser(monkeypatch, secrets_dir):
     assert gmail.get_credentials() is creds
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="no non-interactive login yet: CI would hang on the browser flow",
-)
 def test_ci_refresh_error_fails(monkeypatch, secrets_dir):
     creds = FakeCreds(valid=False, expired=True, fail=RefreshError("revoked"))
     monkeypatch.setenv("GMAIL_TOKEN_JSON", json.dumps({"refresh_token": "r"}))
