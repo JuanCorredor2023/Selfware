@@ -1,0 +1,23 @@
+# /etc/nginx/sites-available/selfware  (then symlink into sites-enabled)
+# Same origin for the dashboard and the API, so the browser needs no CORS.
+server {
+    listen 80;
+    server_name _;            # put the domain or the VM's IP here
+
+    root /srv/selfware/app/web/dist;
+    index index.html;
+
+    # API routes -> uvicorn. Keep this list in sync with src/selfware/api/app.py.
+    location ~ ^/(ask|cost|para|projects|areas|resources|archive|health)$ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;   # a real answer can take several seconds
+    }
+
+    # Everything else is the dashboard (static files).
+    location / {
+        try_files $uri /index.html;
+    }
+}

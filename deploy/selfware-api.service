@@ -1,0 +1,16 @@
+# /etc/systemd/system/selfware-api.service
+# ONE worker on purpose: the cost ledger (/cost) lives in the process memory.
+[Unit]
+Description=Atlas / Selfware API
+After=network.target
+
+[Service]
+User=selfware
+WorkingDirectory=/srv/selfware/app
+EnvironmentFile=/etc/selfware/selfware.env
+ExecStart=/usr/local/bin/uv run --locked uvicorn selfware.api.app:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
