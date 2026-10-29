@@ -1,14 +1,14 @@
-# Avances de P3 (agente y evaluación) — 24 y 25 de octubre de 2026
+# Avances de P3 (agente y evaluación) — 24 a 29 de octubre de 2026
 
-Rama: `p3/enron-resultados`. Entrega oficial: **30 de octubre, 10:00 PT (11:00 CDMX)**;
+Ramas: `p3/enron-resultados` (mergeada en el PR #4) y `p3/metricas-finales`. Entrega oficial: **30 de octubre, 10:00 PT (11:00 CDMX)**;
 el plan interno apuntaba al 27.
 
 ## 1. En una línea
 
-Selfware ya tiene **corpus real, 200 preguntas verificadas por un humano y una
-evaluación reproducible con números reales**. El resultado: PARA ayuda un poco
-cuando todo está bien clasificado, pero con los clasificadores actuales el filtro
-esconde la respuesta.
+Selfware ya tiene **dos buzones reales, 250 preguntas (200 verificadas por un humano)
+y una evaluación reproducible con números reales**. El resultado, igual en los dos
+buzones: con la carpeta del dueño PARA ordena mejor la respuesta, pero ni Nemotron
+Super ni Nemotron Ultra eligen bien la carpeta, y el filtro esconde la respuesta.
 
 ## 2. Qué se hizo
 
@@ -61,7 +61,59 @@ esconde la respuesta.
 
 ## 3. Resultados
 
-Reportes finales `final-*.md`, con las 200 preguntas ya verificadas por el humano.
+### 3.1 Resultados finales: 250 preguntas, dos buzones (28 oct)
+
+Reportes `final250-*.md` (solo recuperación). Por buzón: 100 preguntas con respuesta
+(34 projects / 33 areas / 33 resources, todas `human-verified`) y 25 sin respuesta.
+`kaminski-v` usa el subconjunto de 100 (`enron_kaminski-v_100.jsonl`); `shapiro-r` sus
+100. Correos etiquetados con las carpetas del dueño; la pregunta la enruta Super (el
+sistema actual), Ultra (mismo prompt, modelo ~4 veces más grande) o el oráculo (la
+carpeta real). Gráficas para el video: `scripts/plot_video.py`.
+
+**hit@5** (¿el correo correcto está entre los 5 primeros?)
+
+| Buzón | flat | PARA · oráculo | PARA · Super | PARA · Ultra |
+|---|---:|---:|---:|---:|
+| Kaminski (research, 3,084 correos) | 0.91 | **0.94** (+0.03 [+0.00, +0.07]) | 0.48 (**−0.43** [−0.53, −0.33]) | 0.40 (**−0.51** [−0.61, −0.41]) |
+| Shapiro (gov. affairs, 1,179 correos) | 0.95 | **0.96** (+0.01 [+0.00, +0.03]) | 0.40 (**−0.55** [−0.65, −0.45]) | 0.38 (**−0.57** [−0.67, −0.47]) |
+
+**MRR** (qué tan arriba queda el correo correcto)
+
+| Buzón | flat | PARA · oráculo | PARA · Super | PARA · Ultra |
+|---|---:|---:|---:|---:|
+| Kaminski | 0.82 | **0.87** (**+0.05** [+0.02, +0.09]) | 0.44 (**−0.38**) | 0.38 (**−0.44**) |
+| Shapiro | 0.87 | **0.90** (**+0.02** [+0.01, +0.04]) | 0.37 (**−0.50**) | 0.37 (**−0.50**) |
+
+**Enrutamiento** (los dos buzones juntos): ¿la pregunta fue a la carpeta de su respuesta?
+
+| Respuesta en | Super | Ultra |
+|---|---:|---:|
+| projects (68) | 19 (28%) | 4 (6%) |
+| areas (66) | **0 (0%)** | **0 (0%)** |
+| resources (66) | 56 (85%) | 62 (94%) |
+| **Total** | 75/200 (38%) | 66/200 (33%) |
+| Preguntas mandadas a resources | 73% / 80% | 86% / 94% |
+
+**Qué significa:**
+1. **Se repite en los dos buzones.** Ya no es una anécdota de Kaminski.
+2. **Con la carpeta del dueño, PARA ordena mejor**: el MRR sube en los dos buzones
+   (significativo). En hit@5 la ganancia es pequeña y su intervalo toca el 0, porque flat
+   ya acierta 91–95%: queda poco margen (efecto techo).
+3. **Un modelo más grande no arregla el enrutamiento.** Ultra cae todavía más en el
+   atractor de resources que Super, y ninguno acierta una sola pregunta de areas. El
+   problema es la tarea (adivinar la taxonomía personal del dueño a partir de una pregunta
+   de una línea), no la capacidad del modelo.
+4. Con el filtro duro, cada error de enrutamiento esconde la respuesta: PARA pierde
+   0.43–0.57 de hit@5 frente a flat.
+
+Gasto de las corridas finales: Ultra US$0.158, Super US$0.061, oráculo e índice de
+Shapiro < US$0.01. **Gasto total del proyecto en Nebius: ≈ US$6.1.**
+
+### 3.2 Corridas anteriores: Kaminski, 200 preguntas (25 oct)
+
+Reportes `final-*.md`, con las 200 preguntas ya verificadas por el humano. Incluyen las
+etiquetas de Nano y la corrida completa con Ultra y el juez de RAGAS, que no se
+repitieron sobre las 250.
 
 **hit@5: ¿el correo correcto está entre los 5 primeros? (flat ≈ 0.92)**
 
@@ -102,22 +154,28 @@ hit@5 sube +0.06 [+0.01, +0.12].
 6. La salida natural, para trabajo futuro: un **filtro suave**, que use PARA para
    ordenar los resultados y no para excluirlos.
 
-**Gasto total en créditos de Nebius: ≈ US$5.7** (indexado ≈ US$0.20; corridas de solo
-recuperación ≈ US$0.05 cada una; corridas completas con Ultra y RAGAS ≈ US$1.5–2.2).
+Gasto hasta el 25 oct: ≈ US$5.7 (indexado ≈ US$0.20; corridas de solo recuperación
+≈ US$0.05 cada una; corridas completas con Ultra y RAGAS ≈ US$1.5–2.2).
 
 ## 4. Cómo reproducirlo
 
 ```bash
-# corpus, índice y preguntas: ver questions/README.md
-uv run python -m scripts.run_eval --retrieval-only \
-    --chroma ~/dev/atlas-lab/enron/chroma_folders --run enron --threshold 0.3 \
-    --questions questions/enron_kaminski-v.jsonl \
-    --questions questions/enron_kaminski-v_abstain.jsonl
-# --oracle: PARA con la carpeta real · --real: además Ultra y RAGAS (dólares)
+# corpus, índices y preguntas: ver questions/README.md
+# Una corrida final (shapiro-r; kaminski-v igual con enron_kaminski-v_100.jsonl)
+uv run python -m scripts.run_eval --retrieval-only --router super \
+    --chroma ~/dev/atlas-lab/enron/shapiro-r/chroma_folders \
+    --run final250-shapiro-super --threshold 0.3 \
+    --questions questions/enron_shapiro-r.jsonl \
+    --questions questions/enron_shapiro-r_abstain.jsonl
+# --router ultra: Ultra enruta (~US$0.08) · --oracle: la carpeta real, solo el archivo
+# con respuesta · --real: además Ultra responde y RAGAS juzga (dólares)
+
+# Las gráficas del video, desde los reportes final250-*.md (sin red)
+uv run --with matplotlib python -m scripts.plot_video --out docs/video
 ```
 
-El paquete para el equipo (corpus, índices ya construidos y reportes) se comparte
-fuera del repo: `paquete_equipo.tar.gz`.
+El paquete para el equipo (corpus de los dos buzones, mapeos, huellas SHA-256 y, aparte,
+los índices) se comparte fuera del repo: `paquete_equipo_v2.zip`.
 
 ## 5. Lo que falta antes de entregar
 
