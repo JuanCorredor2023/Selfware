@@ -268,8 +268,9 @@ def test_load_accepted_reads_evidence_alt(tmp_path):
     assert load_accepted([path]) == {"q1": frozenset({"mail-2", "mail-3"})}
 
 
-def test_the_nano_router_sends_the_query_prompt_to_nano(monkeypatch):
-    from scripts.run_eval import make_nano_router
+@pytest.mark.parametrize("tier", ["nano", "ultra"])
+def test_the_router_sends_the_query_prompt_to_its_tier(monkeypatch, tier):
+    from scripts.run_eval import make_router
     from selfware.context import classifier as classifier_module
     from selfware.context.domain import ParaFolder
 
@@ -280,8 +281,8 @@ def test_the_nano_router_sends_the_query_prompt_to_nano(monkeypatch):
         return "areas", None
 
     monkeypatch.setattr(classifier_module, "call", fake_call)
-    assert make_nano_router().classify_query("q") == ParaFolder.AREAS
-    assert seen["tier"] == "nano"
+    assert make_router(tier).classify_query("q") == ParaFolder.AREAS
+    assert seen["tier"] == tier
     assert seen["system"] == classifier_module._QUERY_PROMPT
 
 
