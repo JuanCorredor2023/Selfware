@@ -25,10 +25,14 @@ web/ (React dashboard)  <--  api/: /ask  /cost  /para  /projects  /areas  /resou
 eval/ + scripts/        <--  flat-vs-PARA report (hit@k, MRR, RAGAS, abstention)
 ```
 
+The PARA tree endpoints (`/para`, `/projects`, `/areas`, `/resources`, `/archive`) still
+serve mock data (`api/_mock_para.py`); in real mode, the folder shown with each answer is
+the real one.
+
 | Folder | What it is |
 | --- | --- |
 | `src/selfware/core/` | Shared contracts (`schemas.py`) and `llm.py`, the single client to Token Factory. |
-| `src/selfware/ingest/` | Gmail connector, normalization, and `jobs.py` (the entrypoint for scheduled runs). |
+| `src/selfware/ingest/` | Gmail connector, normalization, and `jobs.py` (one incremental ingestion run). |
 | `src/selfware/context/` | Chroma store, embeddings, the PARA classifier and `retrieve(query, strategy, k)`. |
 | `src/selfware/agent/` | The answering agent: prompt, confidence from logprobs, abstention rule, `/ask` entry point. |
 | `src/selfware/eval/` | The evaluation harness, metrics and report. |
@@ -37,12 +41,12 @@ eval/ + scripts/        <--  flat-vs-PARA report (hit@k, MRR, RAGAS, abstention)
 | `web/` | The React dashboard (see [`web/README.md`](web/README.md) and [`web/DESIGN.md`](web/DESIGN.md)). |
 | `scripts/` | Runnable entry points: indexing, evaluation. `tools/` holds the Enron corpus extractors. |
 | `questions/` | The evaluation questions. |
-| `docs/` | Plan, contracts, integration notes, meeting minutes. |
+| `assets/` | Result charts, drawn by `scripts/plot_video.py` from the evaluation reports. |
 
 Architecture rule: modules only import from `core/`; `observability/` may be imported by
 anyone; composition happens at the edges (`api/_real_agent.py`, `scripts/`).
 
-## Where Nemotron, Token Factory and Serverless Jobs are used
+## Where Nemotron and Token Factory are used
 
 - **Token Factory**: every model call goes through `src/selfware/core/llm.py`, the only
   file that knows the Token Factory URL.
@@ -51,9 +55,6 @@ anyone; composition happens at the edges (`api/_real_agent.py`, `scripts/`).
 - **Nemotron Ultra** writes the answers.
 - **Qwen3-Embedding-8B** (also on Token Factory) embeds emails and questions;
   **Qwen3-235B** is the evaluation judge, a different model from the one that answers.
-- **Nebius Serverless Jobs**: `src/selfware/ingest/jobs.py` is the entrypoint of one
-  scheduled ingestion run (fetch new mail since the last Gmail history pointer,
-  classify, index).
 - Web search (Tavily) was cut from scope; `used_web` is always `false`.
 
 ## Setup
@@ -111,7 +112,7 @@ uv run python -m scripts.index_emails --input emails.json --yes
 # the public Enron sample used by the evaluation: see questions/README.md
 ```
 
-Scheduled ingestion (Gmail to Chroma, incremental): `uv run python -m selfware.ingest.jobs`
+Incremental ingestion (Gmail to Chroma): `uv run python -m selfware.ingest.jobs`
 (needs the Gmail credentials described in `src/selfware/ingest/gmail.py`).
 
 ## Observability
@@ -122,15 +123,43 @@ tokens, latency and cost) next to the FastAPI request spans, exported to the con
 in `src/selfware/observability/cost.py`; a model with no price is counted as
 `unpriced_calls` rather than silently costing $0.00.
 
+## Results
+
+We tested the core question on the public Enron corpus: two real mailboxes (Vince
+Kaminski, research, 3,084 emails; Richard Shapiro, government affairs, 1,179 emails),
+125 questions each: 100 answerable, every one checked by hand against its source email,
+and 25 whose answer is not in the mailbox. Each email's PARA folder comes from the
+owner's own folders. Retrieval only, k = 5, paired bootstrap 95% intervals.
+
+![hit@5 per mailbox: flat, PARA with the owner's folder, PARA routed by Super and by Ultra](assets/1_hit_at_5.png)
+
+| hit@5 | Flat | PARA, owner's folder | PARA, routed by Super | PARA, routed by Ultra |
+| --- | ---: | ---: | ---: | ---: |
+| Kaminski | 0.91 | 0.94 | 0.48 | 0.40 |
+| Shapiro | 0.95 | 0.96 | 0.40 | 0.38 |
+
+- **With the owner's folder, PARA ranks the answer higher** in both mailboxes: MRR
+  +0.05 [+0.02, +0.09] and +0.02 [+0.01, +0.04]. The hit@5 gain is small (+0.03 and
+  +0.01, intervals touching 0) because flat search already finds 91-95%
+  ([chart](assets/2_oracle_gain.png)).
+- **Automatic routing is the hard part.** Guessing, from a one-line question, where the
+  owner filed the answer, both Nemotron Super and Nemotron Ultra lean toward Resources
+  (73-94% of questions), so today the PARA filter finds less than flat search
+  ([chart](assets/3_routing.png)). The dashboard lets you switch between both.
+- Limits: the PARA labels are our reading of another person's folders, and the 50
+  unanswerable questions are AI-drafted, not yet checked by hand
+  ([`questions/README.md`](questions/README.md)).
+- Token Factory spend for the whole evaluation: about US$6.
+
 ## Reproduce the evaluation
 
 ```bash
 uv run python -m scripts.run_eval --help
 ```
 
-Step-by-step, costs and results: [`questions/README.md`](questions/README.md) and
-[`docs/avances_p3.md`](docs/avances_p3.md). The Enron corpus itself is not published,
-only the questions.
+Step-by-step and costs: [`questions/README.md`](questions/README.md). The Enron corpus itself
+is not published, only the questions. The charts above come from the reports with
+`uv run --with matplotlib python -m scripts.plot_video` (no network).
 
 ## Deploying
 
