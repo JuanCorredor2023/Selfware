@@ -1,14 +1,14 @@
 """
-Tests de retrieve.py — la lógica de H1. Se usan un STORE FALSO y el classifier
-configurable, porque aquí lo que se prueba es la LÓGICA DE DECISIÓN (qué rama,
-qué campos, cuándo fallback), no Chroma.
+Tests for retrieve.py: the H1 logic. They use a FAKE STORE and a configurable
+classifier, because what is tested here is the DECISION LOGIC (which branch,
+which fields, when to fall back), not Chroma.
 
-Comportamientos:
-  - FLAT: query_category=None, sin fallback, no usa el classifier.
-  - PARA con resultados: categoría del classifier, sin fallback.
-  - PARA con filtrado vacío: fallback True, categoría conservada, chunks del plano.
-  - La categoría del resultado SIGUE al classifier (enrutamiento real).
-  - k se propaga al store.
+Behaviours:
+  - FLAT: query_category=None, no fallback, does not use the classifier.
+  - PARA with results: the classifier's category, no fallback.
+  - PARA with an empty filtered search: fallback True, category kept, flat chunks.
+  - The result's category FOLLOWS the classifier (real routing).
+  - k is passed on to the store.
 """
 
 import pytest
@@ -19,7 +19,7 @@ from selfware.context.retrieve import Retrieve
 
 
 class FakeStore:
-    """Store falso: devuelve listas fijas y registra con qué k fue llamado."""
+    """Fake store: returns fixed lists and records the k it was called with."""
 
     def __init__(self, flat_result, filtered_result):
         self._flat = flat_result
@@ -51,7 +51,7 @@ def make_retriever(flat_result, filtered_result, classifier_category):
 # --- FLAT ---
 
 
-def test_flat_categoria_none_sin_fallback():
+def test_flat_category_none_no_fallback():
     r, _ = make_retriever([chunk()], [chunk()], ParaFolder.PROJECTS)
     res = r.retrieve("q", Strategy.FLAT, 5)
     assert res.query_category is None
@@ -59,63 +59,63 @@ def test_flat_categoria_none_sin_fallback():
     assert res.strategy == Strategy.FLAT
 
 
-def test_flat_no_usa_el_classifier():
-    # Aunque el classifier esté configurado, FLAT no clasifica -> categoría None
+def test_flat_does_not_use_the_classifier():
+    # Even with a classifier configured, FLAT does not classify -> category None
     r, _ = make_retriever([chunk()], [chunk()], ParaFolder.ARCHIVE)
     res = r.retrieve("q", Strategy.FLAT, 5)
     assert res.query_category is None
 
 
-# --- PARA con resultados ---
+# --- PARA with results ---
 
 
-def test_para_con_resultados_usa_categoria_del_classifier():
+def test_para_with_results_uses_the_classifier_category():
     r, _ = make_retriever([chunk()], [chunk(), chunk()], ParaFolder.AREAS)
     res = r.retrieve("q", Strategy.PARA, 5)
     assert res.query_category == ParaFolder.AREAS
     assert res.fell_back_to_flat is False
-    assert len(res.chunks) == 2  # los del filtrado, no los del plano
+    assert len(res.chunks) == 2  # the filtered ones, not the flat ones
 
 
-# --- PARA con fallback ---
+# --- PARA with fallback ---
 
 
-def test_para_fallback_cuando_filtrado_vacio():
-    # filtrado vacío -> cae a plano, marca fallback, CONSERVA la categoría
+def test_para_falls_back_when_filtered_is_empty():
+    # empty filtered search -> falls back to flat, flags it, KEEPS the category
     r, _ = make_retriever([chunk(), chunk(), chunk()], [], ParaFolder.RESOURCES)
     res = r.retrieve("q", Strategy.PARA, 5)
     assert res.fell_back_to_flat is True
-    assert res.query_category == ParaFolder.RESOURCES  # conservada pese al fallback
-    assert len(res.chunks) == 3  # los del plano
+    assert res.query_category == ParaFolder.RESOURCES  # kept despite the fallback
+    assert len(res.chunks) == 3  # the flat ones
 
 
-# --- Enrutamiento: la categoría sigue al classifier ---
+# --- Routing: the category follows the classifier ---
 
 
 @pytest.mark.parametrize("cat", list(ParaFolder))
-def test_enrutamiento_sigue_al_classifier(cat):
+def test_routing_follows_the_classifier(cat):
     r, _ = make_retriever([chunk()], [chunk()], cat)
     res = r.retrieve("q", Strategy.PARA, 5)
     assert res.query_category == cat
 
 
-# --- k se propaga al store ---
+# --- k is passed on to the store ---
 
 
-def test_k_se_propaga_a_flat():
+def test_k_is_passed_to_flat():
     r, store = make_retriever([chunk()], [chunk()], ParaFolder.PROJECTS)
     r.retrieve("q", Strategy.FLAT, 7)
     assert store.last_flat_k == 7
 
 
-def test_k_se_propaga_a_filtered():
+def test_k_is_passed_to_filtered():
     r, store = make_retriever([chunk()], [chunk()], ParaFolder.PROJECTS)
     r.retrieve("q", Strategy.PARA, 9)
     assert store.last_filtered_k == 9
 
 
-def test_para_pasa_parafolder_al_store():
-    # el store debe recibir el ParaFolder (enum), no un string
+def test_para_passes_a_parafolder_to_the_store():
+    # the store must receive the ParaFolder (enum), not a string
     r, store = make_retriever([chunk()], [chunk()], ParaFolder.AREAS)
     r.retrieve("q", Strategy.PARA, 5)
     assert store.last_filtered_category == ParaFolder.AREAS

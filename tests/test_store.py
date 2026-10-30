@@ -1,14 +1,14 @@
 """
-Tests de store.py — ChromaStore contra Chroma REAL (colección temporal por test,
-vía la fixture tmp_path de pytest, que crea y limpia un directorio aislado).
+Tests for store.py: ChromaStore against a REAL Chroma (a temporary collection per
+test, through pytest's tmp_path fixture, which creates and cleans an isolated folder).
 
-Se usa el Embedder falso: los vectores no tienen sentido semántico, así que NO se
-prueba relevancia (qué chunk es "más parecido"), solo comportamiento mecánico:
-  - Idempotencia: reinsertar no duplica.
-  - Reclasificación (upsert): reinsertar con otra categoría actualiza.
-  - Filtro por categoría: search_filtered solo devuelve la categoría pedida.
-  - Ensamblado: los Chunk salen con texto, Source con enum y datetime, score en [0,1].
-  - Validación: add_documents vacío lanza.
+They use the fake Embedder: its vectors carry no meaning, so relevance (which chunk
+is "most similar") is NOT tested, only mechanical behaviour:
+  - Idempotence: inserting again does not duplicate.
+  - Reclassification (upsert): inserting again with another category updates it.
+  - Category filter: search_filtered only returns the requested category.
+  - Assembly: Chunks come out with text, a Source with enum and datetime, score in [0,1].
+  - Validation: add_documents with an empty list raises.
 """
 
 import hashlib
@@ -22,10 +22,10 @@ from selfware.context.store import ChromaStore
 
 
 class FakeEmbedder:
-    """Embedder de mentira para tests: vectores deterministas por hash, sin red.
-    Cumple la MISMA forma que el Embedder real (embed_documents / embed_query)
-    para que sea intercambiable por inyección. No aplica prefijos de verdad
-    porque sus vectores no tienen sentido semántico -- solo imita la forma."""
+    """Fake embedder for tests: deterministic vectors from a hash, no network.
+    It has the SAME shape as the real Embedder (embed_documents / embed_query)
+    so it can be injected in its place. It applies no real prefixes, because
+    its vectors carry no meaning -- it only mimics the shape."""
 
     def __init__(self, dimensions: int = 4096):
         self.dimensions = dimensions
@@ -43,8 +43,8 @@ class FakeEmbedder:
 
 
 def make_store(tmp_path):
-    # tmp_path es una fixture de pytest: un directorio temporal único por test.
-    # Así cada test corre contra una colección Chroma limpia y aislada.
+    # tmp_path is a pytest fixture: a unique temporary folder per test, so each
+    # test runs against a clean, isolated Chroma collection.
     return ChromaStore(embedder=FakeEmbedder(), path=str(tmp_path))
 
 
@@ -60,37 +60,37 @@ def make_doc(
     )
 
 
-def test_add_documents_vacio_lanza(tmp_path):
+def test_add_documents_empty_raises(tmp_path):
     store = make_store(tmp_path)
     with pytest.raises(ValueError):
         store.add_documents([])
 
 
-def test_insercion_cuenta_correcta(tmp_path):
+def test_insert_count_is_right(tmp_path):
     store = make_store(tmp_path)
     store.add_documents([make_doc("m1", "projects"), make_doc("m2", "areas")])
     assert store.collection.count() == 2
 
 
-def test_idempotencia_no_duplica(tmp_path):
+def test_idempotent_no_duplicates(tmp_path):
     store = make_store(tmp_path)
     docs = [make_doc("m1", "projects"), make_doc("m2", "areas")]
     store.add_documents(docs)
-    store.add_documents(docs)  # reinsertar los mismos
+    store.add_documents(docs)  # insert the same ones again
     assert store.collection.count() == 2
 
 
-def test_reclasificacion_por_upsert(tmp_path):
+def test_reclassification_by_upsert(tmp_path):
     store = make_store(tmp_path)
     store.add_documents([make_doc("m1", "projects")])
-    # mismo source_id, categoría distinta -> upsert debe ACTUALIZAR, no duplicar
+    # same source_id, another category -> upsert must UPDATE, not duplicate
     store.add_documents([make_doc("m1", "archive")])
     assert store.collection.count() == 1
     got = store.collection.get(include=["metadatas"])
     assert got["metadatas"][0]["category"] == "archive"
 
 
-def test_filtro_por_categoria_solo_devuelve_esa(tmp_path):
+def test_category_filter_returns_only_that_category(tmp_path):
     store = make_store(tmp_path)
     store.add_documents(
         [
@@ -104,44 +104,44 @@ def test_filtro_por_categoria_solo_devuelve_esa(tmp_path):
     assert all(c.source.para_folder == ParaFolder.PROJECTS for c in chunks)
 
 
-def test_filtro_categoria_vacia_devuelve_lista_vacia(tmp_path):
-    # Ninguna categoría RESOURCES insertada -> filtro devuelve [] (dispara el fallback en retrieve)
+def test_empty_category_filter_returns_empty_list(tmp_path):
+    # No RESOURCES inserted -> the filter returns [] (triggers the fallback in retrieve)
     store = make_store(tmp_path)
     store.add_documents([make_doc("m1", "projects")])
     chunks = store.search_filtered("q", ParaFolder.RESOURCES, k=10)
     assert chunks == []
 
 
-def test_search_flat_respeta_k(tmp_path):
+def test_search_flat_respects_k(tmp_path):
     store = make_store(tmp_path)
     store.add_documents([make_doc(f"m{i}", "projects") for i in range(10)])
     chunks = store.search_flat("q", k=3)
     assert len(chunks) == 3
 
 
-def test_ensamblado_del_chunk(tmp_path):
+def test_chunk_assembly(tmp_path):
     store = make_store(tmp_path)
     store.add_documents(
         [make_doc("m1", "areas", content="texto exacto", date="2026-03-15T10:30:00Z")]
     )
     chunks = store.search_flat("q", k=1)
     c = chunks[0]
-    # texto original recuperado
+    # original text recovered
     assert c.text == "texto exacto"
-    # Source con enum reconstruido
+    # Source with its enum rebuilt
     assert c.source.para_folder == ParaFolder.AREAS
     assert isinstance(c.source.para_folder, ParaFolder)
-    # fecha reconstruida a datetime aware
+    # date rebuilt as an aware datetime
     assert isinstance(c.source.date, datetime)
     assert c.source.date.tzinfo is not None
-    # score normalizado en rango [0,1] (coseno: distancia [0,2] -> 1-d/2)
+    # score normalized to [0,1] (cosine: distance [0,2] -> 1-d/2)
     assert -0.01 <= c.score <= 1.01
-    # id no vacío
+    # non-empty id
     assert c.chunk_id
 
 
-def test_distance_to_score_extremos(tmp_path):
-    # Prueba directa de la fórmula: distancia 0 -> score 1 (idéntico); distancia 2 -> score 0 (opuesto)
+def test_distance_to_score_extremes(tmp_path):
+    # The formula itself: distance 0 -> score 1 (identical); distance 2 -> score 0 (opposite)
     store = make_store(tmp_path)
     assert store._distance_to_score(0.0) == 1.0
     assert store._distance_to_score(2.0) == 0.0

@@ -1,10 +1,9 @@
 """
 api/_real_agent.py -- Person 4.
 
-Builds the real `answer_question(query, strategy)` for `/ask`, following the
-paste in docs/integration_p3.md (G5): `agent/` never imports `context/`
-(architecture rule 1), so the API is where the real retriever is built and
-injected into `agent.ask.make_answer_question`.
+Builds the real `answer_question(query, strategy)` for `/ask`. `agent/` never
+imports `context/` (architecture rule 1), so the API is where the real
+retriever is built and injected into `agent.ask.make_answer_question`.
 
 Only imported when SELFWARE_AGENT=real, so the mock-only setup (and CI) does
 not need chromadb or a Token Factory key.
@@ -14,7 +13,7 @@ Environment:
     SELFWARE_CACHE_DIR     folder of the answer cache (default ".cache")
 
 The PARA arm classifies each question with the real context.classifier
-(Nemotron Super, integration_p3.md F1). Its TierCall is handed to
+(Nemotron Super). Its TierCall is handed to
 api/_calls.py, so /ask prices it and /cost counts it.
 """
 

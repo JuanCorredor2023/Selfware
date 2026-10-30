@@ -4,7 +4,7 @@ from selfware.context.domain import ParaFolder
 from selfware.core.llm import call
 from selfware.core.schemas import TierCall
 
-# Categoría por defecto cuando la respuesta del LLM no mapea a ninguna.
+# Default folder when the LLM's answer maps to none of them.
 _DEFAULT_CATEGORY = ParaFolder.RESOURCES
 
 _QUERY_PROMPT = (

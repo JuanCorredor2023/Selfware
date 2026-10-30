@@ -45,7 +45,7 @@ def test_estimate_cost_super_matches_the_model_catalog():
 
 def test_every_model_id_in_core_llm_has_a_price():
     # If someone adds a tier to core.llm.MODEL_IDS without pricing it, its
-    # calls would silently cost $0.00 (integration_p3.md, B5).
+    # calls would silently cost $0.00.
     from selfware.core.llm import MODEL_IDS
 
     for tier, model_id in MODEL_IDS.items():

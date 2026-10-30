@@ -3,8 +3,7 @@ core/schemas.py -- the contracts between lanes. Owner: Person 1.
 
 Single source of truth: every lane imports these types from here. It merges
 the three drafts that existed before integration (`core/schema.py`,
-`core/schemas.py` and `agent/_contracts.py`); see docs/integration_p3.md,
-items A1-A5 and C2.
+`core/schemas.py` and `agent/_contracts.py`).
 
 - ContextItem: ingest/ -> context/ (C1)
 - Chunk:       context/ -> agent/, eval/, api/ (C2)
