@@ -1,11 +1,10 @@
 """
 src/selfware/api/_mock_agent.py -- Person 4's TEMPORARY mock.
 
-The real agent lives in agent/answer.py (Person 3), but it is not wired to
-/ask yet: it takes retrieved chunks, not a strategy (see
-docs/integration_p3.md, C1). In the meantime, this function returns an Answer with the
-EXACT shape of contract C3, so /ask and the dashboard can be built and
-tested now, without calling Token Factory.
+The real agent is wired in api/_real_agent.py and used with
+SELFWARE_AGENT=real. This mock is the default: it returns an Answer with the
+EXACT shape of contract C3, so /ask, the dashboard and CI run without calling
+Token Factory.
 
 The two strategies return plausibly DIFFERENT answers on purpose, so the
 flat/PARA toggle visibly changes something in a demo:

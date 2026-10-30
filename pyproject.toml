@@ -26,7 +26,7 @@ dependencies = [
     "opentelemetry-api",
     "opentelemetry-sdk",
     # eval/ (Person 3). Read before upgrading any of these four: they hold each
-    # other up (D30, re-measured on Python 3.14 on 4 Oct; see docs/integration_p3.md, D2).
+    # other up (re-measured on Python 3.14 on 4 Oct).
     # ragas: 0.3.1 exactly. From 0.3.9 it depends on `instructor`, which caps
     #   `openai` far below the 3.x SDK `core/llm.py` is built on.
     "ragas==0.3.1",

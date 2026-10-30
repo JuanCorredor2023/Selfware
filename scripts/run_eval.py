@@ -35,7 +35,9 @@ Both real modes print the Token Factory spend at the end (`scripts/_tally.py`).
 `--router nano` (with a real mode) classifies the queries with Nano instead of
 Super, using Person 2's same query prompt. With the Nano-labelled index it puts
 the same model on both sides (filing and searching), which tells apart "PARA
-needs one consistent taxonomy" from "this classifier is bad".
+needs one consistent taxonomy" from "this classifier is bad". `--router ultra`
+does the same with Ultra: does a bigger model route better with the same
+prompt? One Ultra call per PARA question: estimate and confirm first.
 
 `--oracle` (with a real mode) swaps the query classifier for the questions' own
 `category`: the PARA arm always searches the folder the evidence lives in. It
@@ -156,7 +158,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--chroma", type=Path, help="Chroma index (real modes)")
     parser.add_argument(
         "--router",
-        choices=["super", "nano"],
+        choices=["super", "nano", "ultra"],
         default="super",
         help="model that classifies the query in the PARA arm (real modes)",
     )
@@ -232,17 +234,17 @@ class OracleClassifier:
         return ParaFolder(self.category_of[query])
 
 
-def make_nano_router():
-    """Person 2's `Classifier` with the query routed to Nano instead of Super:
+def make_router(tier: str):
+    """Person 2's `Classifier` with the query routed to `tier` instead of Super:
     same prompt, same parsing, another model. Built here, in the composition
     root, so `context/` is untouched."""
     from selfware.context import classifier as classifier_module
 
-    class NanoRouter(classifier_module.Classifier):
+    class TierRouter(classifier_module.Classifier):
         def classify_query(self, query: str):
-            return self._classify(query, classifier_module._QUERY_PROMPT, "nano")
+            return self._classify(query, classifier_module._QUERY_PROMPT, tier)
 
-    return NanoRouter()
+    return TierRouter()
 
 
 def make_real_retrieve(chroma: Path, classifier=None):
@@ -355,8 +357,8 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
     accepted = load_accepted(args.questions)
     if args.oracle:
         router = OracleClassifier(questions)
-    elif args.router == "nano":
-        router = make_nano_router()
+    elif args.router != "super":
+        router = make_router(args.router)
     else:
         router = None
     retrieve = make_real_retrieve(args.chroma, router)
@@ -382,9 +384,10 @@ def _run_real(questions: list[Question], args: argparse.Namespace) -> str:
 
         answer = make_answerer(Path(".cache"), llm_call=counted_llm_call)
         warning = None
-    if args.router == "nano":
+    if args.router != "super":
         warning = (warning + " " if warning else "") + (
-            "Queries routed by Nano (Person 2's query prompt), not Super."
+            f"Queries routed by {args.router.capitalize()} (Person 2's query prompt), "
+            "not Super."
         )
     if args.oracle:
         warning = (warning + " " if warning else "") + (

@@ -1,14 +1,14 @@
 """
-Tests de domain.py — el foco son las INVARIANTES de RetrievalResult.__post_init__,
-que es la única lógica del módulo. Los dataclasses sin lógica no se testean
-(construirlos y leer sus campos no prueba nada útil).
+Tests for domain.py: the focus is the INVARIANTS of RetrievalResult.__post_init__,
+the only logic in the module. Dataclasses without logic are not tested (building
+them and reading their fields proves nothing useful).
 
-Reglas que el __post_init__ hace cumplir:
-  1. FLAT con query_category no nula  -> prohibido
-  2. FLAT con fell_back_to_flat=True  -> prohibido
-  3. PARA con query_category nula     -> prohibido
-Y los estados válidos deben construirse sin error, incluido el caso
-diagnóstico PARA + categoría + fallback=True.
+Rules that __post_init__ enforces:
+  1. FLAT with a non-null query_category  -> forbidden
+  2. FLAT with fell_back_to_flat=True     -> forbidden
+  3. PARA with a null query_category      -> forbidden
+And the valid states must build without error, including the diagnostic case
+PARA + category + fallback=True.
 """
 
 import pytest
@@ -16,7 +16,7 @@ import pytest
 from selfware.context.domain import ParaFolder, RetrievalResult, Strategy
 
 
-# --- Helper: construye un RetrievalResult con defaults válidos y overrides ---
+# --- Helper: builds a RetrievalResult with valid defaults and overrides ---
 def make_result(**overrides):
     base = {
         "chunks": [],
@@ -30,10 +30,10 @@ def make_result(**overrides):
     return RetrievalResult(**base)
 
 
-# --- Estados VÁLIDOS: deben construirse sin lanzar ---
+# --- VALID states: must build without raising ---
 
 
-def test_flat_sin_categoria_es_valido():
+def test_flat_without_category_is_valid():
     r = make_result(
         strategy=Strategy.FLAT, query_category=None, fell_back_to_flat=False
     )
@@ -41,14 +41,14 @@ def test_flat_sin_categoria_es_valido():
     assert r.query_category is None
 
 
-def test_para_con_categoria_es_valido():
+def test_para_with_category_is_valid():
     r = make_result(strategy=Strategy.PARA, query_category=ParaFolder.PROJECTS)
     assert r.query_category == ParaFolder.PROJECTS
 
 
-def test_para_con_categoria_y_fallback_es_valido():
-    # Caso diagnóstico clave: PARA clasificó, el filtro quedó vacío y cayó a plano.
-    # La categoría predicha se conserva -> combinación LEGÍTIMA, no prohibida.
+def test_para_with_category_and_fallback_is_valid():
+    # Key diagnostic case: PARA classified, the filter came back empty and fell
+    # back to flat. The predicted category is kept -> a LEGITIMATE combination.
     r = make_result(
         strategy=Strategy.PARA,
         query_category=ParaFolder.AREAS,
@@ -58,41 +58,41 @@ def test_para_con_categoria_y_fallback_es_valido():
     assert r.query_category == ParaFolder.AREAS
 
 
-# --- Estados IMPOSIBLES: deben lanzar ValueError ---
+# --- IMPOSSIBLE states: must raise ValueError ---
 
 
-def test_flat_con_categoria_es_invalido():
+def test_flat_with_category_is_invalid():
     with pytest.raises(ValueError):
         make_result(strategy=Strategy.FLAT, query_category=ParaFolder.PROJECTS)
 
 
-def test_flat_con_fallback_es_invalido():
+def test_flat_with_fallback_is_invalid():
     with pytest.raises(ValueError):
         make_result(strategy=Strategy.FLAT, query_category=None, fell_back_to_flat=True)
 
 
-def test_para_sin_categoria_es_invalido():
+def test_para_without_category_is_invalid():
     with pytest.raises(ValueError):
         make_result(strategy=Strategy.PARA, query_category=None)
 
 
-# --- Los enums serializan a su string (mixin str) — importa para persistencia ---
+# --- The enums serialize to their string (str mixin), which persistence needs ---
 
 
-def test_parafolder_es_str():
+def test_parafolder_is_str():
     assert ParaFolder.PROJECTS == "projects"
     assert ParaFolder.PROJECTS.value == "projects"
 
 
-def test_strategy_es_str():
+def test_strategy_is_str():
     assert Strategy.FLAT == "flat"
     assert Strategy.PARA == "para"
 
 
-# --- Conversión al contrato C2 (core.schemas.Chunk) ---
+# --- Conversion to contract C2 (core.schemas.Chunk) ---
 
 
-def test_chunk_se_convierte_al_contrato_c2():
+def test_chunk_converts_to_contract_c2():
     from datetime import UTC, datetime
 
     from selfware.context.domain import Chunk, Source

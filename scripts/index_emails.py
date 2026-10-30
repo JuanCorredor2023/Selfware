@@ -1,5 +1,5 @@
 """
-scripts/index_emails.py -- Person 4 (proposal for G2 in docs/integration_p3.md).
+scripts/index_emails.py -- Person 4.
 
 The missing link between the pieces that already exist:
 
