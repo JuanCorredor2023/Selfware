@@ -11,8 +11,7 @@ This is NOT part of `pytest` on purpose, like `scripts/e2e_smoke.py`: it costs
 money and needs the network, and neither belongs in the automated suite.
 
 Three synthetic cases whose scores are known in advance, so the run checks the
-judge, not just that it answers (the same idea as the lab's
-`verificar_ragas.py`, without its real receipt number, D4):
+judge, not just that it answers:
 
     1. only the relevant context            -> precision 1.0, recall 1.0
     2. an irrelevant context, then the relevant one
@@ -35,15 +34,15 @@ from selfware.eval.ragas_runner import JudgeInput
 from selfware.observability.cost import with_cost
 
 RELEVANT = (
-    "Confirmación de inscripción: el taller de Python empieza el martes 3 de "
-    "noviembre de 2026 a las 18:00, en el aula 204 del edificio B."
+    "Registration confirmed: the Python workshop starts on Tuesday, November 3, "
+    "2026 at 6:00 pm, in room 204 of building B."
 )
 IRRELEVANT = (
-    "Boletín semanal: la nueva versión del navegador mejora el rendimiento de "
-    "las pestañas y añade un modo de lectura."
+    "Weekly newsletter: the new browser release makes tabs faster and adds a "
+    "reading mode."
 )
-QUESTION = "¿cuándo empieza el taller de Python?"
-REFERENCE = "El martes 3 de noviembre de 2026 a las 18:00"
+QUESTION = "When does the Python workshop start?"
+REFERENCE = "Tuesday, November 3, 2026 at 6:00 pm"
 
 CASES = [
     # (label, contexts, expected precision, expected recall)
